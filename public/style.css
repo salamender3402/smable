@@ -922,7 +922,8 @@ body {
   z-index: 6000;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
   overflow-y: auto;
   padding: 20px;
 }
@@ -930,6 +931,7 @@ body {
 .modal-overlay.active {
   opacity: 1;
   pointer-events: auto;
+  visibility: visible;
 }
 
 .modal-content {
@@ -1074,12 +1076,14 @@ body {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   background: rgba(0,0,0,0.15);
   z-index: 5500; opacity: 0; pointer-events: none;
-  transition: opacity 0.3s ease;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .warp-overlay-screen.active { 
   opacity: 1; 
   pointer-events: auto; /* Block click events to non-target background tiles */
+  visibility: visible;
 }
 
 .warp-guide-box {
@@ -1090,7 +1094,6 @@ body {
   padding: 16px;
   width: 280px;
   text-align: center;
-  pointer-events: auto;
   position: fixed;
   bottom: 30px;
   left: 30px;
