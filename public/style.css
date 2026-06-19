@@ -812,6 +812,7 @@ body {
   background-repeat: no-repeat;
   background-position: bottom center;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
+  mix-blend-mode: screen; /* 필터링을 통해 검은색 배경을 투명하게 만듦 */
 }
 
 .token-3d-p0 .token-3d-inner { background-image: url('images/p1_rook.png'); }
