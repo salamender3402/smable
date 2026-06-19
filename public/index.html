@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과학 개념 브루마블 - 실시간 4인 멀티플레이어</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Outfit:wght@400;600;800&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Confetti Canvas -->
+  <canvas id="celebration-canvas"></canvas>
+
+  <!-- LOBBY / ROOM LOGIN OVERLAY -->
+  <div id="lobby-screen" class="lobby-screen active">
+    <div class="lobby-card">
+      <div class="lobby-logo">
+        <i class="fa-solid fa-flask logo-icon"></i>
+        <h1>과학 개념 <span>브루마블</span></h1>
+      </div>
+      <p class="lobby-subtitle">실시간 4인 멀티플레이어 - 상태변화와 열에너지</p>
+
+      <!-- Step 1: Input Player Name -->
+      <div id="lobby-step-1" class="lobby-step active">
+        <div class="form-group">
+          <label for="player-name-input">닉네임 입력</label>
+          <input type="text" id="player-name-input" placeholder="이름을 입력하세요 (최대 8자)" maxlength="8">
+        </div>
+        <div class="lobby-actions">
+          <button id="create-room-btn" class="btn btn-primary btn-block">방 만들기 (Host)</button>
+          <div class="divider-text">또는</div>
+          <div class="join-room-box">
+            <input type="text" id="room-code-input" placeholder="4자리 방 코드 입력" maxlength="4">
+            <button id="join-room-btn" class="btn btn-accent">방 참여하기</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Room Waiting Area -->
+      <div id="lobby-step-2" class="lobby-step">
+        <div class="room-code-display">
+          <span>방 코드</span>
+          <h2 id="display-room-code">----</h2>
+        </div>
+        
+        <div class="connected-players-box">
+          <h3>참여 중인 플레이어 (<span id="connected-count">1</span>/4)</h3>
+          <div id="lobby-players-list" class="lobby-players-grid">
+            <!-- Dynamic listing -->
+          </div>
+        </div>
+
+        <div class="lobby-waiting-actions">
+          <button id="start-game-btn" class="btn btn-primary btn-block" disabled>게임 시작하기 (최소 2인)</button>
+          <p id="waiting-host-msg" class="waiting-msg">방장이 게임을 시작하기를 기다리는 중...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN GAME DISPLAY (Hidden by default until Game Start) -->
+  <div id="game-screen" class="game-screen">
+    <!-- Header Section -->
+    <header class="game-header">
+      <div class="header-logo">
+        <i class="fa-solid fa-flask logo-icon"></i>
+        <h1>과학 개념 <span>브루마블</span></h1>
+      </div>
+      <div class="room-indicator">
+        방 코드: <strong id="header-room-code">ABCD</strong>
+      </div>
+      <div class="game-info-bar">
+        <div class="info-badge turn-badge">
+          <i class="fa-solid fa-hourglass-half"></i>
+          <span>TURN <strong id="current-turn">1</strong> / 30</span>
+        </div>
+        <div class="info-badge active-player-badge">
+          <i class="fa-solid fa-user"></i>
+          <span>현재 턴: <strong id="active-player-name">Player 1</strong></span>
+        </div>
+        <div class="view-controls">
+          <button id="toggle-sound-btn" class="btn btn-secondary btn-sm" title="음소거 설정">
+            <i class="fa-solid fa-volume-high"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Game Board & Panels layout -->
+    <main class="game-container">
+      <!-- Left Dashboard: Player 1 & Player 3 -->
+      <section class="dashboard-column left-column">
+        <!-- Player 1 Scorecard -->
+        <div class="player-panel player-0-panel" id="panel-p0">
+          <div class="player-card">
+            <div class="player-header">
+              <div class="player-avatar avatar-red"><i class="fa-solid fa-atom"></i></div>
+              <div class="player-meta">
+                <h2 id="p0-name">Player 1</h2>
+                <span class="turn-indicator">YOUR TURN</span>
+              </div>
+            </div>
+            <div class="player-stats">
+              <div class="stat-row">
+                <span class="stat-label">보유 골드</span>
+                <span class="stat-value text-gold"><span id="p0-gold">1,500</span> G</span>
+              </div>
+              <div class="stat-row total-assets">
+                <span class="stat-label">총 자산</span>
+                <span class="stat-value text-green"><span id="p0-total">1,500</span> G</span>
+              </div>
+            </div>
+            <div class="player-status-badges">
+              <span id="p0-trap-badge" class="badge badge-warning hidden">
+                <i class="fa-solid fa-temperature-empty"></i> 절대 0도의 방 (<span id="p0-trap-turns">0</span>턴 대기)
+              </span>
+              <span id="p0-warp-badge" class="badge badge-info hidden">
+                <i class="fa-solid fa-circle-nodes"></i> 상태 변화 터널 대기
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Player 3 Scorecard -->
+        <div class="player-panel player-2-panel hidden" id="panel-p2">
+          <div class="player-card">
+            <div class="player-header">
+              <div class="player-avatar avatar-yellow"><i class="fa-solid fa-temperature-half"></i></div>
+              <div class="player-meta">
+                <h2 id="p2-name">Player 3</h2>
+                <span class="turn-indicator">YOUR TURN</span>
+              </div>
+            </div>
+            <div class="player-stats">
+              <div class="stat-row">
+                <span class="stat-label">보유 골드</span>
+                <span class="stat-value text-gold"><span id="p2-gold">1,500</span> G</span>
+              </div>
+              <div class="stat-row total-assets">
+                <span class="stat-label">총 자산</span>
+                <span class="stat-value text-green"><span id="p2-total">1,500</span> G</span>
+              </div>
+            </div>
+            <div class="player-status-badges">
+              <span id="p2-trap-badge" class="badge badge-warning hidden">
+                <i class="fa-solid fa-temperature-empty"></i> 절대 0도의 방 (<span id="p2-trap-turns">0</span>턴 대기)
+              </span>
+              <span id="p2-warp-badge" class="badge badge-info hidden">
+                <i class="fa-solid fa-circle-nodes"></i> 상태 변화 터널 대기
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Center Column: 2D Board Grid -->
+      <section class="board-section">
+        <div class="board" id="game-board">
+          <!-- Board Center Console Controls -->
+          <div class="board-center">
+            <div class="center-controls">
+              <!-- Dice roller visual -->
+              <div class="dice-container">
+                <div class="scene">
+                  <div class="cube" id="dice-1">
+                    <div class="cube__face cube__face--1">1</div>
+                    <div class="cube__face cube__face--2">2</div>
+                    <div class="cube__face cube__face--3">3</div>
+                    <div class="cube__face cube__face--4">4</div>
+                    <div class="cube__face cube__face--5">5</div>
+                    <div class="cube__face cube__face--6">6</div>
+                  </div>
+                </div>
+                <div class="scene">
+                  <div class="cube" id="dice-2">
+                    <div class="cube__face cube__face--1">1</div>
+                    <div class="cube__face cube__face--2">2</div>
+                    <div class="cube__face cube__face--3">3</div>
+                    <div class="cube__face cube__face--4">4</div>
+                    <div class="cube__face cube__face--5">5</div>
+                    <div class="cube__face cube__face--6">6</div>
+                  </div>
+                </div>
+              </div>
+              <div class="roll-result" id="roll-result-text">자신의 턴을 기다리세요.</div>
+              <!-- Action triggers -->
+              <button id="roll-btn" class="roll-dice-btn" disabled>
+                <span class="btn-shine"></span>
+                <span class="btn-text">주사위 굴리기</span>
+              </button>
+              <button id="warp-action-btn" class="warp-btn hidden">
+                <span class="btn-shine"></span>
+                <span class="btn-text">워프할 칸 선택하기</span>
+              </button>
+            </div>
+            <!-- Log 중계 Console -->
+            <div class="game-console">
+              <div class="console-header">실시간 게임 중계</div>
+              <div id="console-logs" class="console-body">
+                <p class="log-system">로딩 완료. 방에 입장해 게임을 플레이해 주세요.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tiles (32 Grid Layout: 9x9 cells) -->
+          <!-- Row 9 (Bottom Edge: Index 0 to 8) -->
+          <div class="tile tile-corner start-tile" data-index="0" style="grid-row: 9; grid-column: 9;">
+            <div class="tile-content">
+              <div class="tile-icon"><i class="fa-solid fa-flask"></i></div>
+              <div class="tile-name">과학 탐구실</div>
+              <div class="tile-sub">START</div>
+            </div>
+            <div class="players-container" id="tile-players-0"></div>
+          </div>
+          <div class="tile music-tile baroque-tile" data-index="1" style="grid-row: 9; grid-column: 8;">
+            <div class="era-tag">입자 운동</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">철광석 광산</div>
+            <div class="tile-composer">고체</div>
+            <div class="tile-price">100G</div>
+            <div class="players-container" id="tile-players-1"></div>
+            <div class="owner-flag"></div>
+          </div>
+          <div class="tile music-tile baroque-tile" data-index="2" style="grid-row: 9; grid-column: 7;">
+            <div class="era-tag">입자 운동</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">흐르는 강물</div>
+            <div class="tile-composer">액체</div>
+            <div class="tile-price">120G</div>
+            <div class="players-container" id="tile-players-2"></div>
+            <div class="owner-flag"></div>
+          </div>
+          <div class="tile chance-tile" data-index="3" style="grid-row: 9; grid-column: 6;">
+            <div class="tile-content"><div class="tile-icon"><i class="fa-solid fa-atom"></i></div><div class="tile-name">찬스</div></div>
+            <div class="players-container" id="tile-players-3"></div>
+          </div>
+          <div class="tile music-tile baroque-tile" data-index="4" style="grid-row: 9; grid-column: 5;">
+            <div class="era-tag">입자 운동</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">바람개비 언덕</div>
+            <div class="tile-composer">기체</div>
+            <div class="tile-price">140G</div>
+            <div class="players-container" id="tile-players-4"></div>
+            <div class="owner-flag"></div>
+          </div>
+          <div class="tile music-tile baroque-tile" data-index="5" style="grid-row: 9; grid-column: 4;">
+            <div class="era-tag">입자 운동</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">끊임없는 춤교실</div>
+            <div class="tile-composer">입자</div>
+            <div class="tile-price">160G</div>
+            <div class="players-container" id="tile-players-5"></div>
+            <div class="owner-flag"></div>
+          </div>
+          <div class="tile chance-tile" data-index="6" style="grid-row: 9; grid-column: 3;">
+            <div class="tile-content"><div class="tile-icon"><i class="fa-solid fa-atom"></i></div><div class="tile-name">찬스</div></div>
+            <div class="players-container" id="tile-players-6"></div>
+          </div>
+          <div class="tile music-tile baroque-tile" data-index="7" style="grid-row: 9; grid-column: 2;">
+            <div class="era-tag">입자 운동</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">입자 간격 비교실</div>
+            <div class="tile-composer">입자 거리</div>
+            <div class="tile-price">180G</div>
+            <div class="players-container" id="tile-players-7"></div>
+            <div class="owner-flag"></div>
+          </div>
+ 
+          <!-- Corner: Index 8 (Trap) -->
+          <div class="tile tile-corner trap-tile" data-index="8" style="grid-row: 9; grid-column: 1;">
+            <div class="tile-content">
+              <div class="tile-icon"><i class="fa-solid fa-temperature-empty"></i></div>
+              <div class="tile-name">절대 0도의 방</div>
+              <div class="tile-sub">입자 운동 정지</div>
+            </div>
+            <div class="players-container" id="tile-players-8"></div>
+          </div>
+ 
+          <!-- Left Edge: Index 9 to 15 (Row 8 to 2) -->
+          <div class="tile music-tile classical-tile" data-index="9" style="grid-row: 8; grid-column: 1;">
+            <div class="era-tag">열 흡수</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">초콜릿 퐁듀 카페</div>
+            <div class="tile-composer">융해</div>
+            <div class="tile-price">200G</div>
+            <div class="players-container" id="tile-players-9"></div>
+            <div class="owner-flag"></div>
+          </div>
+          <div class="tile music-tile classical-tile" data-index="10" style="grid-row: 7; grid-column: 1;">
+            <div class="era-tag">열 흡수</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">바람 부는 빨래터</div>
+            <div class="tile-composer">기화</div>
+            <div class="tile-price">220G</div>
+            <div class="players-container" id="tile-players-10"></div>
+            <div class="owner-flag"></div>
+          </div>
+          <div class="tile chance-tile" data-index="11" style="grid-row: 6; grid-column: 1;">
+            <div class="tile-content"><div class="tile-icon"><i class="fa-solid fa-atom"></i></div><div class="tile-name">찬스</div></div>
+            <div class="players-container" id="tile-players-11"></div>
+          </div>
+          <div class="tile music-tile classical-tile" data-index="12" style="grid-row: 5; grid-column: 1;">
+            <div class="era-tag">열 흡수</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">얼음 조각 전시장</div>
+            <div class="tile-composer">융해열</div>
+            <div class="tile-price">240G</div>
+            <div class="players-container" id="tile-players-12"></div>
+            <div class="owner-flag"></div>
+          </div>
+          <div class="tile music-tile classical-tile" data-index="13" style="grid-row: 4; grid-column: 1;">
+            <div class="era-tag">열 흡수</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">여름날의 분수대</div>
+            <div class="tile-composer">기화열</div>
+            <div class="tile-price">260G</div>
+            <div class="players-container" id="tile-players-13"></div>
+            <div class="owner-flag"></div>
+          </div>
+          <div class="tile chance-tile" data-index="14" style="grid-row: 3; grid-column: 1;">
+            <div class="tile-content"><div class="tile-icon"><i class="fa-solid fa-atom"></i></div><div class="tile-name">찬스</div></div>
+            <div class="players-container" id="tile-players-14"></div>
+          </div>
+          <div class="tile music-tile classical-tile" data-index="15" style="grid-row: 2; grid-column: 1;">
+            <div class="era-tag">열 흡수</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">드라이아이스 실험실</div>
+            <div class="tile-composer">승화(흡열)</div>
+            <div class="tile-price">280G</div>
+            <div class="players-container" id="tile-players-15"></div>
+            <div class="owner-flag"></div>
+          </div>
+ 
+          <!-- Corner: Index 16 (Warp) -->
+          <div class="tile tile-corner warp-tile" data-index="16" style="grid-row: 1; grid-column: 1;">
+            <div class="tile-content">
+              <div class="tile-icon"><i class="fa-solid fa-circle-nodes"></i></div>
+              <div class="tile-name">상태 변화 터널</div>
+              <div class="tile-sub">물질 차원 이동</div>
+            </div>
+            <div class="players-container" id="tile-players-16"></div>
+          </div>
+ 
+          <!-- Top Edge: Index 17 to 23 (Col 2 to 8) -->
+          <div class="tile music-tile romantic-tile" data-index="17" style="grid-row: 1; grid-column: 2;">
+            <div class="era-tag">열 방출</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">겨울 고드름 처마</div>
+            <div class="tile-composer">응고</div>
+            <div class="tile-price">300G</div>
+            <div class="players-container" id="tile-players-17"></div>
+            <div class="owner-flag"></div>
+          </div>
+          <div class="tile music-tile romantic-tile" data-index="18" style="grid-row: 1; grid-column: 3;">
+            <div class="era-tag">열 방출</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">안개 자욱한 아침 숲</div>
+            <div class="tile-composer">액화</div>
+            <div class="tile-price">310G</div>
+            <div class="players-container" id="tile-players-18"></div>
+            <div class="owner-flag"></div>
+          </div>
+          <div class="tile chance-tile" data-index="19" style="grid-row: 1; grid-column: 4;">
+            <div class="tile-content"><div class="tile-icon"><i class="fa-solid fa-atom"></i></div><div class="tile-name">찬스</div></div>
+            <div class="players-container" id="tile-players-19"></div>
+          </div>
+          <div class="tile music-tile romantic-tile" data-index="20" style="grid-row: 1; grid-column: 5;">
+            <div class="era-tag">열 방출</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">이글루 물 뿌리기</div>
+            <div class="tile-composer">응고열</div>
+            <div class="tile-price">320G</div>
+            <div class="players-container" id="tile-players-20"></div>
+            <div class="owner-flag"></div>
+          </div>
+          <div class="tile music-tile romantic-tile" data-index="21" style="grid-row: 1; grid-column: 6;">
+            <div class="era-tag">열 방출</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">김 서린 대중탕</div>
+            <div class="tile-composer">액화열</div>
+            <div class="tile-price">340G</div>
+            <div class="players-container" id="tile-players-21"></div>
+            <div class="owner-flag"></div>
+          </div>
+          <div class="tile chance-tile" data-index="22" style="grid-row: 1; grid-column: 7;">
+            <div class="tile-content"><div class="tile-icon"><i class="fa-solid fa-atom"></i></div><div class="tile-name">찬스</div></div>
+            <div class="players-container" id="tile-players-22"></div>
+          </div>
+          <div class="tile music-tile romantic-tile" data-index="23" style="grid-row: 1; grid-column: 8;">
+            <div class="era-tag">열 방출</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">겨울 창문 성에 방</div>
+            <div class="tile-composer">승화(발열)</div>
+            <div class="tile-price">360G</div>
+            <div class="players-container" id="tile-players-23"></div>
+            <div class="owner-flag"></div>
+          </div>
+ 
+          <!-- Corner: Index 24 (Chance corner) -->
+          <div class="tile tile-corner chance-corner-tile" data-index="24" style="grid-row: 1; grid-column: 9;">
+            <div class="tile-content">
+              <div class="tile-icon"><i class="fa-solid fa-circle-question"></i></div>
+              <div class="tile-name">융합 과학 찬스</div>
+              <div class="tile-sub">스페셜 카드</div>
+            </div>
+            <div class="players-container" id="tile-players-24"></div>
+          </div>
+ 
+          <!-- Right Edge: Index 25 to 31 (Row 2 to 8) -->
+          <div class="tile music-tile modern-tile" data-index="25" style="grid-row: 2; grid-column: 9;">
+            <div class="era-tag">생활 활용</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">휴대용 에어컨</div>
+            <div class="tile-composer">기화열 흡수</div>
+            <div class="tile-price">400G</div>
+            <div class="players-container" id="tile-players-25"></div>
+            <div class="owner-flag"></div>
+          </div>
+          <div class="tile music-tile modern-tile" data-index="26" style="grid-row: 3; grid-column: 9;">
+            <div class="era-tag">생활 활용</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">이글루의 지혜</div>
+            <div class="tile-composer">응고열 방출</div>
+            <div class="tile-price">420G</div>
+            <div class="players-container" id="tile-players-26"></div>
+            <div class="owner-flag"></div>
+          </div>
+          <div class="tile chance-tile" data-index="27" style="grid-row: 4; grid-column: 9;">
+            <div class="tile-content"><div class="tile-icon"><i class="fa-solid fa-atom"></i></div><div class="tile-name">찬스</div></div>
+            <div class="players-container" id="tile-players-27"></div>
+          </div>
+          <div class="tile music-tile modern-tile" data-index="28" style="grid-row: 5; grid-column: 9;">
+            <div class="era-tag">생활 활용</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">아이스크림 포장</div>
+            <div class="tile-composer">드라이아이스 승화</div>
+            <div class="tile-price">440G</div>
+            <div class="players-container" id="tile-players-28"></div>
+            <div class="owner-flag"></div>
+          </div>
+          <div class="tile music-tile modern-tile" data-index="29" style="grid-row: 6; grid-column: 9;">
+            <div class="era-tag">생활 활용</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">안개와 김</div>
+            <div class="tile-composer">수증기 액화</div>
+            <div class="tile-price">460G</div>
+            <div class="players-container" id="tile-players-29"></div>
+            <div class="owner-flag"></div>
+          </div>
+          <div class="tile chance-tile" data-index="30" style="grid-row: 7; grid-column: 9;">
+            <div class="tile-content"><div class="tile-icon"><i class="fa-solid fa-atom"></i></div><div class="tile-name">찬스</div></div>
+            <div class="players-container" id="tile-players-30"></div>
+          </div>
+          <div class="tile music-tile modern-tile" data-index="31" style="grid-row: 8; grid-column: 9;">
+            <div class="era-tag">생활 활용</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">눈 올 때 따뜻함</div>
+            <div class="tile-composer">상태변화와 열</div>
+            <div class="tile-price">480G</div>
+            <div class="players-container" id="tile-players-31"></div>
+            <div class="owner-flag"></div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Right Column: Player 2 & Player 4 AND Real-time Chat Box -->
+      <section class="dashboard-column right-column">
+        <!-- Player 2 Scorecard -->
+        <div class="player-panel player-1-panel hidden" id="panel-p1">
+          <div class="player-card">
+            <div class="player-header">
+              <div class="player-avatar avatar-cyan"><i class="fa-solid fa-flask"></i></div>
+              <div class="player-meta">
+                <h2 id="p1-name">Player 2</h2>
+                <span class="turn-indicator">YOUR TURN</span>
+              </div>
+            </div>
+            <div class="player-stats">
+              <div class="stat-row">
+                <span class="stat-label">보유 골드</span>
+                <span class="stat-value text-gold"><span id="p1-gold">1,500</span> G</span>
+              </div>
+              <div class="stat-row total-assets">
+                <span class="stat-label">총 자산</span>
+                <span class="stat-value text-green"><span id="p1-total">1,500</span> G</span>
+              </div>
+            </div>
+            <div class="player-status-badges">
+              <span id="p1-trap-badge" class="badge badge-warning hidden">
+                <i class="fa-solid fa-temperature-empty"></i> 절대 0도의 방 (<span id="p1-trap-turns">0</span>턴 대기)
+              </span>
+              <span id="p1-warp-badge" class="badge badge-info hidden">
+                <i class="fa-solid fa-circle-nodes"></i> 상태 변화 터널 대기
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Player 4 Scorecard -->
+        <div class="player-panel player-3-panel hidden" id="panel-p3">
+          <div class="player-card">
+            <div class="player-header">
+              <div class="player-avatar avatar-purple"><i class="fa-solid fa-dna"></i></div>
+              <div class="player-meta">
+                <h2 id="p3-name">Player 4</h2>
+                <span class="turn-indicator">YOUR TURN</span>
+              </div>
+            </div>
+            <div class="player-stats">
+              <div class="stat-row">
+                <span class="stat-label">보유 골드</span>
+                <span class="stat-value text-gold"><span id="p3-gold">1,500</span> G</span>
+              </div>
+              <div class="stat-row total-assets">
+                <span class="stat-label">총 자산</span>
+                <span class="stat-value text-green"><span id="p3-total">1,500</span> G</span>
+              </div>
+            </div>
+            <div class="player-status-badges">
+              <span id="p3-trap-badge" class="badge badge-warning hidden">
+                <i class="fa-solid fa-temperature-empty"></i> 절대 0도의 방 (<span id="p3-trap-turns">0</span>턴 대기)
+              </span>
+              <span id="p3-warp-badge" class="badge badge-info hidden">
+                <i class="fa-solid fa-circle-nodes"></i> 상태 변화 터널 대기
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Real-time Chat Box -->
+        <div class="chat-container">
+          <div class="chat-header">
+            <i class="fa-solid fa-comments"></i> 실시간 대화창
+          </div>
+          <div class="chat-messages" id="chat-messages-box">
+            <p class="chat-system">채팅방에 연결되었습니다. 훈훈한 대화를 나눠보세요!</p>
+          </div>
+          <form class="chat-input-area" id="chat-send-form">
+            <input type="text" id="chat-text-input" placeholder="메시지를 입력하세요..." maxlength="50" autocomplete="off">
+            <button type="submit" class="chat-send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- GAME INTERACTION POPUP MODALS -->
+
+  <!-- Audio initialization modal -->
+  <div id="audio-start-modal" class="modal-overlay active">
+    <div class="modal-content audio-modal">
+      <div class="audio-icon-pulse"><i class="fa-solid fa-atom"></i></div>
+      <h2>과학 개념 브루마블</h2>
+      <p>실시간 4인 대기방 멀티플레이어 보드게임에 오신 것을 환영합니다.<br>이 게임은 실시간 효과음을 포함하고 있습니다.</p>
+      <button id="audio-accept-btn" class="btn btn-primary">사운드 켜고 시작하기</button>
+    </div>
+  </div>
+
+  <!-- 1. Science Quiz Popup -->
+  <div id="quiz-modal" class="modal-overlay">
+    <div class="modal-content quiz-content">
+      <div class="modal-header-banner quiz-banner">
+        <i class="fa-solid fa-lightbulb"></i>
+        <span>과학 개념 퀴즈 팝업</span>
+      </div>
+      <div class="quiz-body">
+        <div class="quiz-info">
+          <span id="quiz-tile-era" class="badge">과학 개념</span>
+          <h3 id="quiz-tile-name">고체 상태</h3>
+        </div>
+        <p id="quiz-question-text" class="question-text">퀴즈 로딩 중...</p>
+        <div class="quiz-options" id="quiz-options-container">
+          <!-- Dynamically populated in client.js -->
+        </div>
+        <div class="quiz-timer-bar">
+          <div class="timer-progress" id="quiz-timer-progress"></div>
+        </div>
+        <div class="quiz-result-feedback hidden" id="quiz-feedback">
+          <div class="feedback-icon"><i class="fa-solid fa-circle-check"></i></div>
+          <h4 id="quiz-feedback-title">정답입니다!</h4>
+          <p id="quiz-feedback-desc">설명</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="quiz-confirm-btn" class="btn btn-primary hidden">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Purchase / Upgrade Modal -->
+  <div id="purchase-modal" class="modal-overlay">
+    <div class="modal-content property-modal">
+      <div class="modal-header-banner build-banner">
+        <i class="fa-solid fa-flask-vial"></i>
+        <span>연구 기지 건설 / 업그레이드</span>
+      </div>
+      <div class="property-details">
+        <div id="prop-era-color" class="prop-color-bar"></div>
+        <h3 id="prop-title">기지 이름</h3>
+        <p id="prop-composer">핵심 개념</p>
+        <div class="current-levels">현재 단계: <span id="prop-current-level">공터</span></div>
+        <div class="upgrade-choices">
+          <div class="choice-card">
+            <h4 id="upgrade-target-title">1단계 건설</h4>
+            <div class="choice-prices">
+              <div>기지 건설 비용: <strong id="upgrade-cost" class="text-gold">0 G</strong></div>
+              <div>활성화 시 통행료: <strong id="upgrade-toll" class="text-red">0 G</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="buy-decline-btn" class="btn btn-secondary">지나치기</button>
+        <button id="buy-confirm-btn" class="btn btn-primary">건설하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Toll Payment & Takeover Modal -->
+  <div id="toll-modal" class="modal-overlay">
+    <div class="modal-content toll-content">
+      <div class="modal-header-banner toll-banner">
+        <i class="fa-solid fa-receipt"></i>
+        <span>연구 통행료 납부 / 인수</span>
+      </div>
+      <div class="toll-body">
+        <div class="toll-graphic animate-pulse"><i class="fa-solid fa-coins"></i></div>
+        <h3>상대방의 과학 개념 기지에 도달했습니다!</h3>
+        <p class="toll-description">
+          <strong id="toll-prop-name">개념 이름</strong> (<span id="toll-owner-name">소유자</span> 소유, <span id="toll-prop-level">Lv.1</span>)
+        </p>
+        <div class="toll-amount-box">납부할 통행료: <strong id="toll-fee" class="text-red">0 G</strong></div>
+        <div class="my-gold-box">나의 보유 골드: <strong id="toll-my-gold" class="text-gold">0 G</strong></div>
+
+        <!-- Takeover Area -->
+        <div id="takeover-info-box" class="takeover-section">
+          <hr>
+          <div class="takeover-header">
+            <i class="fa-solid fa-hand-holding-hand"></i>
+            <h4>인수(Takeover) 기회</h4>
+          </div>
+          <p class="takeover-desc">이 기지를 인수하여 내 연구 기지로 만듭니다. (인수 시 통행료도 함께 지불됩니다.)</p>
+          <div class="takeover-cost-box">인수 비용: <strong id="takeover-cost" class="text-gold">0 G</strong></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="toll-pay-only-btn" class="btn btn-secondary">통행료 납부</button>
+        <button id="toll-takeover-btn" class="btn btn-accent">인수하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Chance Card Modal -->
+  <div id="chance-modal" class="modal-overlay">
+    <div class="modal-content chance-content">
+      <div class="card-container">
+        <div class="chance-card-3d" id="chance-card-element">
+          <!-- Front -->
+          <div class="card-face card-front">
+            <div class="card-inner">
+              <i class="fa-solid fa-atom chance-key-icon"></i>
+              <h3>돌발 과학 찬스</h3>
+              <p>카드를 눌러 뒤집으세요</p>
+            </div>
+          </div>
+          <!-- Back -->
+          <div class="card-face card-back">
+            <div class="card-inner">
+              <div class="card-badge" id="chance-card-badge">찬스 카드</div>
+              <h3 id="chance-title">타이틀</h3>
+              <p id="chance-description">내용 설명</p>
+              <button id="chance-close-btn" class="btn btn-primary">확인</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4.5 Special Card Modal -->
+  <div id="special-modal" class="modal-overlay">
+    <div class="modal-content chance-content">
+      <div class="card-container">
+        <div class="chance-card-3d special-card-3d" id="special-card-element">
+          <!-- Front -->
+          <div class="card-face special-card-front">
+            <div class="card-inner">
+              <i class="fa-solid fa-circle-question chance-key-icon special-key-icon"></i>
+              <h3>융합 과학 스페셜</h3>
+              <p>초정밀 고위험 카드를 눌러 뒤집으세요</p>
+            </div>
+          </div>
+          <!-- Back -->
+          <div class="card-face special-card-back">
+            <div class="card-inner" style="display: flex; flex-direction: column; height: 100%; justify-content: space-between; box-sizing: border-box; padding: 18px 24px;">
+              <div>
+                <div class="card-badge special-card-badge" id="special-card-badge">스페셜 카드</div>
+                <h3 id="special-title">타이틀</h3>
+                <p id="special-description" style="margin-bottom: 6px; font-size: 13px; line-height: 1.5;">내용 설명</p>
+                <div id="special-options-container" style="margin: 8px 0; max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;"></div>
+              </div>
+              <button id="special-close-btn" class="btn btn-accent">확인</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Science Tunnel Warp Selector Overlay -->
+  <div id="warp-overlay" class="warp-overlay-screen">
+    <div class="warp-guide-box">
+      <i class="fa-solid fa-circle-nodes warp-icon-spin"></i>
+      <h3>상태 변화 터널 작동 중!</h3>
+      <p>물질 상태 변화를 통해 도약하고 싶은 개념 기지 칸을 보드판에서 선택해 주세요.</p>
+      <div class="warp-target-info" id="warp-target-preview">이동할 칸을 선택하세요.</div>
+      <button id="warp-cancel-btn" class="btn btn-secondary">취소</button>
+      <button id="warp-confirm-btn" class="btn btn-accent" disabled>차원 도약</button>
+    </div>
+  </div>
+
+  <!-- 6. Game Over Modal -->
+  <div id="game-over-modal" class="modal-overlay">
+    <div class="modal-content game-over-content">
+      <div class="trophy-icon"><i class="fa-solid fa-trophy"></i></div>
+      <h2 id="winner-announcement">최종 승리자!</h2>
+      <p id="game-over-reason">이유</p>
+      <div class="score-summary" id="game-over-scores-container">
+        <!-- populated dynamically -->
+      </div>
+      <button onclick="window.location.reload();" class="btn btn-primary">로비로 가기</button>
+    </div>
+  </div>
+
+  <!-- 7. Takeover Notification Alert Modal -->
+  <div id="takeover-alert-modal" class="modal-overlay">
+    <div class="modal-content takeover-alert-content">
+      <div class="modal-header-banner takeover-alert-banner">
+        <i class="fa-solid fa-handshake-slash"></i>
+        <span>개념 기지 인수 알림</span>
+      </div>
+      <div class="takeover-alert-body">
+        <div class="alert-icon-shake"><i class="fa-solid fa-house-circle-exclamation"></i></div>
+        <h3 id="takeover-alert-title">연구 기지를 강탈당했습니다!</h3>
+        <p id="takeover-alert-desc">플레이어가 당신의 연구 기지를 강제 인수하였습니다.</p>
+        <div class="takeover-alert-details">
+          인수된 기지: <strong id="takeover-alert-prop-name">고체 상태</strong><br>
+          인수자: <strong id="takeover-alert-buyer-name">Player 1</strong><br>
+          인수 보상금: <strong id="takeover-alert-price-received" class="text-green">+240 G</strong>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="takeover-alert-close-btn" class="btn btn-primary">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. Arrival Announcement Modal -->
+  <div id="arrival-modal" class="modal-overlay">
+    <div class="modal-content arrival-content">
+      <div class="modal-header-banner arrival-banner" id="arrival-banner">
+        <i class="fa-solid fa-map-location-dot"></i>
+        <span>새로운 개념 발견</span>
+      </div>
+      <div class="toll-body">
+        <div class="audio-icon-pulse" style="font-size: 48px; text-align: center; margin-bottom: 15px; color: var(--accent-color); animation: pulse-glow 1.5s infinite alternate;">
+          <i class="fa-solid fa-flask"></i>
+        </div>
+        <h3 style="text-align: center; color: #fff;" id="arrival-title">개념 명칭</h3>
+        <p style="text-align: center; line-height: 1.6; margin-top: 10px; color: var(--text-secondary); font-size: 13px;">
+          새로운 개념 기지에 도달하였습니다!<br>
+          확인 버튼을 누르면 이 기지의 상태변화 지식을 테스트하는 과학 퀴즈가 시작됩니다.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button id="arrival-confirm-btn" class="btn btn-primary btn-block">퀴즈 풀기 시작</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. Double Roll Alert Modal -->
+  <div id="double-alert-modal" class="modal-overlay">
+    <div class="modal-content double-alert-content">
+      <div class="modal-header-banner double-banner">
+        <i class="fa-solid fa-dice"></i>
+        <span>더블! (Double)</span>
+      </div>
+      <div class="toll-body" style="text-align: center; padding: 25px;">
+        <div class="double-dice-shake" style="font-size: 54px; color: #ff3366; animation: shake 0.4s ease-in-out infinite alternate; margin-bottom: 15px;">
+          <i class="fa-solid fa-dice-six"></i> <i class="fa-solid fa-dice-six"></i>
+        </div>
+        <h2 style="color: #fff; font-weight: 800; font-size: 24px;">더블 달성!</h2>
+        <p style="margin-top: 10px; color: var(--text-secondary); font-size: 14px; line-height: 1.6;">
+          행운의 더블이 나왔습니다.<br>
+          <strong>한 번 더</strong> 주사위를 던질 기회를 얻습니다! 🎉
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. Science Tunnel Land Confirmation Modal -->
+  <div id="warp-land-modal" class="modal-overlay">
+    <div class="modal-content warp-land-content">
+      <div class="modal-header-banner warp-land-banner">
+        <i class="fa-solid fa-circle-nodes"></i>
+        <span>상태 변화 터널 작동</span>
+      </div>
+      <div class="toll-body">
+        <div class="audio-icon-pulse" style="font-size: 48px; text-align: center; margin-bottom: 15px; color: var(--p1-color); animation: pulse-warn 1.5s infinite alternate;">
+          <i class="fa-solid fa-circle-nodes"></i>
+        </div>
+        <h3 style="text-align: center; color: #fff;">상태 변화 터널에 도달했습니다!</h3>
+        <p style="text-align: center; line-height: 1.6; margin-top: 10px; color: var(--text-secondary); font-size: 13px;">
+          물질 상태의 자유로운 흐름을 타는 터널이 가동을 시작합니다.<br>
+          <strong>다음 턴</strong>에 원하는 개념 기지 칸으로 자유롭게 점프할 수 있습니다!
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button id="warp-land-confirm-btn" class="btn btn-primary btn-block">시공의 문 열기 (턴 종료)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load socket.io client and our client module -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="client.js"></script>
+</body>
+</html>
