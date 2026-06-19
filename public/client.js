@@ -16,6 +16,14 @@ let warpTargetSelected = null;
 let tollModalTimeout = null;
 let previousPlayerGold = [1500, 1500, 1500, 1500];
 
+// 3D Visual player token animation positions
+const playerVisualPositions = [
+  { x: null, y: null, targetX: null, targetY: null, isAnimating: false, animId: null, startTime: 0 },
+  { x: null, y: null, targetX: null, targetY: null, isAnimating: false, animId: null, startTime: 0 },
+  { x: null, y: null, targetX: null, targetY: null, isAnimating: false, animId: null, startTime: 0 },
+  { x: null, y: null, targetX: null, targetY: null, isAnimating: false, animId: null, startTime: 0 }
+];
+
 // BGM State
 const bgmPlayer = new Audio();
 const bgmPlaylist = ["/bgm/bgm.mp3"];
@@ -499,23 +507,162 @@ function boardTilesSync(room) {
   updateTokenDisplay(room);
 }
 
-// Render player tokens on board
+// Helper: Calculate center coordinates of a tile relative to game-board container with player offset
+function getTileCenterCoordinates(position, playerIndex) {
+  const boardEl = document.getElementById("game-board");
+  const tileEl = document.querySelector(`.tile[data-index="${position}"]`);
+  if (!boardEl || !tileEl) return { x: 0, y: 0 };
+
+  const boardRect = boardEl.getBoundingClientRect();
+  const tileRect = tileEl.getBoundingClientRect();
+
+  // Center of the tile relative to the board
+  let x = tileRect.left - boardRect.left + tileRect.width / 2;
+  let y = tileRect.top - boardRect.top + tileRect.height / 2;
+
+  // Add offset to avoid direct overlapping of multiple players on same tile
+  const offsetX = (playerIndex % 2 === 0 ? -9 : 9);
+  const offsetY = (playerIndex < 2 ? -9 : 9) + 4;
+
+  return { x: x + offsetX, y: y + offsetY };
+}
+
+// Helper: Triggers requestAnimationFrame parabolic jump for player tokens
+function triggerTokenJump(playerIndex, startPosition, endPosition) {
+  const visual = playerVisualPositions[playerIndex];
+  const tokenEl = document.getElementById(`token-3d-${playerIndex}`);
+  if (!tokenEl) return;
+
+  // Cancel any existing animation frame
+  if (visual.animId) {
+    cancelAnimationFrame(visual.animId);
+  }
+
+  visual.isAnimating = true;
+
+  // Starting visual coordinates (interrupted mid-movement or starting from startPosition)
+  const startX = visual.x !== null ? visual.x : getTileCenterCoordinates(startPosition, playerIndex).x;
+  const startY = visual.y !== null ? visual.y : getTileCenterCoordinates(startPosition, playerIndex).y;
+
+  // Target end coordinates
+  const targetCoords = getTileCenterCoordinates(endPosition, playerIndex);
+  const endX = targetCoords.x;
+  const endY = targetCoords.y;
+
+  const jumpDuration = 250; // 250ms jump duration
+  const bounceDuration = 100; // 100ms bounce-out cushion duration
+  const totalDuration = jumpDuration + bounceDuration;
+  const maxJumpHeight = 45; // Max visual elevation height in pixels
+
+  const startTime = performance.now();
+  visual.startTime = startTime;
+
+  // Play "step" sound exactly at 120ms (peak of the jump)
+  setTimeout(() => {
+    // Verify player is still jumping and it's the exact same jump animation
+    if (visual.isAnimating && visual.startTime === startTime) {
+      playSynthSound("step");
+    }
+  }, 120);
+
+  function tick(now) {
+    const elapsed = now - startTime;
+
+    if (elapsed >= totalDuration) {
+      // Completed animation sequence
+      visual.x = endX;
+      visual.y = endY;
+      visual.isAnimating = false;
+      visual.animId = null;
+
+      tokenEl.style.left = `${endX}px`;
+      tokenEl.style.top = `${endY}px`;
+      tokenEl.style.transform = `translate(-50%, -100%)`;
+      return;
+    }
+
+    let x = endX;
+    let y = endY;
+    let z = 0;
+
+    if (elapsed < jumpDuration) {
+      // 1. Parabolic jump phase (Sine wave)
+      const p = elapsed / jumpDuration;
+      x = startX + (endX - startX) * p;
+      y = startY + (endY - startY) * p;
+      z = Math.sin(p * Math.PI) * maxJumpHeight;
+    } else {
+      // 2. Bounce out landing cushion phase (Decaying Sine wave)
+      const bp = (elapsed - jumpDuration) / bounceDuration;
+      const decay = 1 - bp;
+      z = -Math.sin(bp * Math.PI) * 6 * decay; // bounce squish downwards
+    }
+
+    // Keep visual representation coordinates updated
+    visual.x = x;
+    visual.y = y;
+
+    tokenEl.style.left = `${x}px`;
+    tokenEl.style.top = `${y}px`;
+    tokenEl.style.transform = `translate(-50%, -100%) translateY(${-z}px)`;
+
+    visual.animId = requestAnimationFrame(tick);
+  }
+
+  visual.animId = requestAnimationFrame(tick);
+}
+
+// Render player tokens on board (Supports 3D coordinates + image 에셋)
 function updateTokenDisplay(room) {
-  // Clear previous tokens
+  // Clear previous 2D player lists inside tiles
   for (let i = 0; i < 32; i++) {
     const container = document.getElementById(`tile-players-${i}`);
     if (container) container.innerHTML = "";
   }
 
-  // Draw connected tokens
+  const boardEl = document.getElementById("game-board");
+  if (!boardEl) return;
+
+  // First, hide all 3D tokens
+  for (let i = 0; i < 4; i++) {
+    const tokenEl = document.getElementById(`token-3d-${i}`);
+    if (tokenEl) tokenEl.style.display = "none";
+  }
+
+  // Draw connected tokens on board
   room.players.forEach((p, idx) => {
-    const container = document.getElementById(`tile-players-${p.position}`);
-    if (container) {
-      const token = document.createElement("div");
-      token.className = `token token-p${idx}`;
-      token.title = p.name;
-      token.innerText = `P${idx + 1}`;
-      container.appendChild(token);
+    let tokenEl = document.getElementById(`token-3d-${idx}`);
+    if (!tokenEl) {
+      tokenEl = document.createElement("div");
+      tokenEl.id = `token-3d-${idx}`;
+      tokenEl.className = `token-3d token-3d-p${idx}`;
+      
+      const innerEl = document.createElement("div");
+      innerEl.className = "token-3d-inner";
+      tokenEl.appendChild(innerEl);
+      boardEl.appendChild(tokenEl);
+    }
+
+    tokenEl.title = p.name;
+    tokenEl.style.display = "block"; // Make sure present players have visible tokens
+
+    const tileCoords = getTileCenterCoordinates(p.position, idx);
+    const visual = playerVisualPositions[idx];
+
+    if (visual.x === null) {
+      // Initialize starting position immediately without visual jumps
+      visual.x = tileCoords.x;
+      visual.y = tileCoords.y;
+      tokenEl.style.left = `${tileCoords.x}px`;
+      tokenEl.style.top = `${tileCoords.y}px`;
+      tokenEl.style.transform = `translate(-50%, -100%)`;
+    } else if (!visual.isAnimating) {
+      // Snap to tile center coordinates if not in step-by-step jump mode
+      visual.x = tileCoords.x;
+      visual.y = tileCoords.y;
+      tokenEl.style.left = `${tileCoords.x}px`;
+      tokenEl.style.top = `${tileCoords.y}px`;
+      tokenEl.style.transform = `translate(-50%, -100%)`;
     }
   });
 }
@@ -625,7 +772,7 @@ function setDiceFace(cubeEl, value) {
   cubeEl.style.transform = `translateZ(-20px) ${rotMap[value]}`;
 }
 
-// Step-by-step local animation
+// Step-by-step local animation (Ting-ting parabolic jump mode)
 function animateSteps(playerIndex, steps, passedStart, callback) {
   const p = currentRoom.players[playerIndex];
   let currentSteps = 0;
@@ -638,16 +785,19 @@ function animateSteps(playerIndex, steps, passedStart, callback) {
       return;
     }
 
+    const startPosition = p.position;
     p.position = (p.position + direction + 32) % 32;
+    const endPosition = p.position;
     currentSteps++;
 
-    playSynthSound("step");
-    updateTokenDisplay(currentRoom);
+    // Trigger the parabolic 3D Tween jump!
+    triggerTokenJump(playerIndex, startPosition, endPosition);
 
     // Visual START warning check (START index is 0)
     if (direction === 1 && p.position === 0 && passedStart) {
-      // Play a quick chime
-      playSynthSound("success");
+      setTimeout(() => {
+        playSynthSound("success");
+      }, 250); // Play success chime when landing on start
     }
 
     setTimeout(takeStep, 250);

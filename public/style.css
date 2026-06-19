@@ -794,6 +794,52 @@ body {
 .token-p2 { background: radial-gradient(circle at 35% 35%, #fff080 0%, var(--p2-color) 70%, #750 100%); }
 .token-p3 { background: radial-gradient(circle at 35% 35%, #fca6ff 0%, var(--p3-color) 70%, #607 100%); }
 
+/* 3D CHESS TOKENS */
+.token-3d {
+  position: absolute;
+  width: 38px;
+  height: 57px;
+  z-index: 1000;
+  pointer-events: none;
+  transform-style: preserve-3d;
+  will-change: left, top, transform;
+}
+
+.token-3d-inner {
+  width: 100%;
+  height: 100%;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: bottom center;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
+}
+
+.token-3d-p0 .token-3d-inner { background-image: url('images/p1_rook.png'); }
+.token-3d-p1 .token-3d-inner { background-image: url('images/p2_knight.png'); }
+.token-3d-p2 .token-3d-inner { background-image: url('images/p3_bishop.png'); }
+.token-3d-p3 .token-3d-inner { background-image: url('images/p4_king.png'); }
+
+/* Neon glow under 3D tokens */
+.token-3d::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translate(-50%, 0) translateZ(-1px);
+  width: 24px;
+  height: 8px;
+  border-radius: 50%;
+  filter: blur(4px);
+  opacity: 0.8;
+  z-index: -1;
+}
+
+.token-3d-p0::after { background: radial-gradient(circle, var(--p0-color) 40%, transparent 80%); box-shadow: 0 0 8px var(--p0-color); }
+.token-3d-p1::after { background: radial-gradient(circle, var(--p1-color) 40%, transparent 80%); box-shadow: 0 0 8px var(--p1-color); }
+.token-3d-p2::after { background: radial-gradient(circle, var(--p2-color) 40%, transparent 80%); box-shadow: 0 0 8px var(--p2-color); }
+.token-3d-p3::after { background: radial-gradient(circle, var(--p3-color) 40%, transparent 80%); box-shadow: 0 0 8px var(--p3-color); }
+
+
 /* CENTRAL LOG 중계 CONSOLE */
 .game-console {
   background: rgba(10, 11, 15, 0.6);
