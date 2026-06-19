@@ -805,6 +805,32 @@ body {
   will-change: left, top, transform;
 }
 
+/* Nameplate floating above 3D tokens */
+.token-nameplate {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 11, 15, 0.85);
+  border: 1px solid transparent;
+  color: #fff;
+  font-family: var(--font-title);
+  font-size: 8px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 8px;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  pointer-events: none;
+  z-index: 1005;
+}
+
+.token-3d-p0 .token-nameplate { border-color: var(--p0-color); box-shadow: 0 0 6px rgba(255, 51, 102, 0.4); }
+.token-3d-p1 .token-nameplate { border-color: var(--p1-color); box-shadow: 0 0 6px rgba(0, 229, 255, 0.4); }
+.token-3d-p2 .token-nameplate { border-color: var(--p2-color); box-shadow: 0 0 6px rgba(255, 179, 0, 0.4); }
+.token-3d-p3 .token-nameplate { border-color: var(--p3-color); box-shadow: 0 0 6px rgba(224, 64, 251, 0.4); }
+
+
 .token-3d-inner {
   width: 100%;
   height: 100%;
@@ -812,7 +838,6 @@ body {
   background-repeat: no-repeat;
   background-position: bottom center;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
-  mix-blend-mode: screen; /* 필터링을 통해 검은색 배경을 투명하게 만듦 */
 }
 
 .token-3d-p0 .token-3d-inner { background-image: url('images/p1_rook.png'); }

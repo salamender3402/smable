@@ -125,6 +125,17 @@ function generateRoomCode() {
   return code;
 }
 
+// Helper: Calculate dynamic multiplier based on rounds (turnCount) to manage gold inflation
+function getRoundMultiplier(turnCount) {
+  if (!turnCount || turnCount <= 9) return 1.0;
+  if (turnCount <= 14) {
+    // Round 10 to 14: scale from 1.2 to 2.0
+    return 1.0 + (turnCount - 9) * 0.2;
+  }
+  // Round 15+: scale from 2.0 + 0.45 per round (2.45 at Rd 15, 4.70 at Rd 20)
+  return 2.0 + (turnCount - 14) * 0.45;
+}
+
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
 
@@ -474,7 +485,12 @@ io.on("connection", (socket) => {
     const tile = room.gameState.boardTiles[tileIndex];
     const ownerIndex = tile.owner;
     const owner = room.players[ownerIndex];
-    const toll = tile.tolls[tile.level];
+    
+    // Apply round multiplier to the toll fee
+    const turnCount = room.gameState.turnCount || 1;
+    const roundMult = getRoundMultiplier(turnCount);
+    const baseToll = tile.tolls[tile.level];
+    const toll = Math.floor(baseToll * roundMult);
 
     // Transfer gold
     const actualToll = Math.min(activeP.gold, toll);
@@ -502,7 +518,12 @@ io.on("connection", (socket) => {
     const tile = room.gameState.boardTiles[tileIndex];
     const ownerIndex = tile.owner;
     const owner = room.players[ownerIndex];
-    const toll = tile.tolls[tile.level];
+    
+    // Apply round multiplier to the toll fee
+    const turnCount = room.gameState.turnCount || 1;
+    const roundMult = getRoundMultiplier(turnCount);
+    const baseToll = tile.tolls[tile.level];
+    const toll = Math.floor(baseToll * roundMult);
 
     // 1. Pay Toll
     const actualToll = Math.min(activeP.gold, toll);
@@ -520,7 +541,9 @@ io.on("connection", (socket) => {
       let multiplier = 2.0;
       if (tile.level === 1) multiplier = 1.5;
       else if (tile.level === 3) multiplier = 2.5;
-      const takeoverCost = Math.floor(originalValue * multiplier);
+      
+      // Apply round multiplier to takeover cost
+      const takeoverCost = Math.floor(originalValue * multiplier * roundMult);
 
       if (activeP.gold >= takeoverCost) {
         activeP.gold -= takeoverCost;
@@ -816,7 +839,11 @@ io.on("connection", (socket) => {
           let multiplier = 2.0;
           if (tile.level === 1) multiplier = 1.5;
           else if (tile.level === 3) multiplier = 2.5;
-          const normalTakeoverCost = Math.floor(originalValue * multiplier);
+          
+          // Apply round multiplier
+          const turnCount = room.gameState.turnCount || 1;
+          const roundMult = getRoundMultiplier(turnCount);
+          const normalTakeoverCost = Math.floor(originalValue * multiplier * roundMult);
           const cost = Math.floor(normalTakeoverCost * 0.5); // 50% discount
           const ownerName = room.players[tile.owner].name;
           options.push({
@@ -907,7 +934,11 @@ io.on("connection", (socket) => {
     let multiplier = 2.0;
     if (tile.level === 1) multiplier = 1.5;
     else if (tile.level === 3) multiplier = 2.5;
-    const normalTakeoverCost = Math.floor(originalValue * multiplier);
+    
+    // Apply round multiplier
+    const turnCount = room.gameState.turnCount || 1;
+    const roundMult = getRoundMultiplier(turnCount);
+    const normalTakeoverCost = Math.floor(originalValue * multiplier * roundMult);
     const discountCost = Math.floor(normalTakeoverCost * 0.5);
 
     if (activeP.gold >= discountCost) {

@@ -507,6 +507,17 @@ function boardTilesSync(room) {
   updateTokenDisplay(room);
 }
 
+// Helper: Calculate dynamic multiplier based on rounds (turnCount) to manage gold inflation
+function getRoundMultiplier(turnCount) {
+  if (!turnCount || turnCount <= 9) return 1.0;
+  if (turnCount <= 14) {
+    // Round 10 to 14: scale from 1.2 to 2.0
+    return 1.0 + (turnCount - 9) * 0.2;
+  }
+  // Round 15+: scale from 2.0 + 0.45 per round (2.45 at Rd 15, 4.70 at Rd 20)
+  return 2.0 + (turnCount - 14) * 0.45;
+}
+
 // Helper: Calculate center coordinates of a tile relative to game-board container with player offset
 function getTileCenterCoordinates(position, playerIndex) {
   const boardEl = document.getElementById("game-board");
@@ -640,11 +651,25 @@ function updateTokenDisplay(room) {
       const innerEl = document.createElement("div");
       innerEl.className = "token-3d-inner";
       tokenEl.appendChild(innerEl);
+
+      const nameplateEl = document.createElement("div");
+      nameplateEl.className = "token-nameplate";
+      tokenEl.appendChild(nameplateEl);
+      
       boardEl.appendChild(tokenEl);
     }
 
     tokenEl.title = p.name;
     tokenEl.style.display = "block"; // Make sure present players have visible tokens
+
+    // Update nameplate text (P1: Nickname)
+    let nameplateEl = tokenEl.querySelector(".token-nameplate");
+    if (!nameplateEl) {
+      nameplateEl = document.createElement("div");
+      nameplateEl.className = "token-nameplate";
+      tokenEl.appendChild(nameplateEl);
+    }
+    nameplateEl.innerText = `P${idx + 1}: ${p.name}`;
 
     const tileCoords = getTileCenterCoordinates(p.position, idx);
     const visual = playerVisualPositions[idx];
@@ -870,7 +895,11 @@ socket.on("triggerTileAction", ({ tile }) => {
         document.getElementById("toll-owner-name").innerText = owner.name;
         const lvNames = ["공터", "간이 연구소", "지역 센터", "국립 과학관", "에너지 메가 돔 (랜드마크)"];
         document.getElementById("toll-prop-level").innerText = lvNames[tile.level];
-        const tollFee = tile.tolls[tile.level];
+        // Apply round multiplier to the toll fee
+        const turnCount = currentRoom.gameState.turnCount || 1;
+        const roundMult = getRoundMultiplier(turnCount);
+        const baseTollFee = tile.tolls[tile.level];
+        const tollFee = Math.floor(baseTollFee * roundMult);
         document.getElementById("toll-fee").innerText = `${tollFee} Gold`;
 
         // Calculate takeover cost
@@ -878,7 +907,9 @@ socket.on("triggerTileAction", ({ tile }) => {
         let multiplier = 2.0;
         if (tile.level === 1) multiplier = 1.5;
         else if (tile.level === 3) multiplier = 2.5;
-        const takeoverCost = Math.floor(originalValue * multiplier);
+        
+        // Apply round multiplier to takeover cost
+        const takeoverCost = Math.floor(originalValue * multiplier * roundMult);
         document.getElementById("takeover-cost").innerText = `${takeoverCost} Gold`;
 
         const me = currentRoom.players[myPlayerIndex];
