@@ -561,12 +561,21 @@ function getTileCenterCoordinates(position, playerIndex) {
   const boardEl = document.getElementById("game-board");
   if (!boardEl) return { x: 0, y: 0 };
 
-  const w = boardEl.offsetWidth || 760;
-  const h = boardEl.offsetHeight || 760;
+  const tileEl = document.querySelector(`.tile[data-index="${position}"]`);
+  let x = 0;
+  let y = 0;
 
-  const coords = getTileGridCoords(position);
-  let x = ((coords.col - 0.5) / 9) * w;
-  let y = ((coords.row - 0.5) / 9) * h;
+  if (tileEl) {
+    x = tileEl.offsetLeft + tileEl.offsetWidth / 2;
+    y = tileEl.offsetTop + tileEl.offsetHeight / 2;
+  } else {
+    // Fallback logic if DOM is not fully initialized
+    const w = boardEl.offsetWidth || 760;
+    const h = boardEl.offsetHeight || 760;
+    const coords = getTileGridCoords(position);
+    x = ((coords.col - 0.5) / 9) * w;
+    y = ((coords.row - 0.5) / 9) * h;
+  }
 
   // Add offset to avoid direct overlapping of multiple players on same tile
   const offsetX = (playerIndex % 2 === 0 ? -9 : 9);
