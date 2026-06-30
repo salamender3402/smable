@@ -15,6 +15,9 @@ let quizTimerInterval = null;
 let warpTargetSelected = null;
 let tollModalTimeout = null;
 let previousPlayerGold = [1500, 1500, 1500, 1500];
+let isCameraZoomedOutForWarp = false;
+let isCameraZoomedIn = false;
+let pendingMoveData = null;
 
 // 3D Visual player token animation positions
 const playerVisualPositions = [
@@ -336,25 +339,29 @@ socket.on("roomStateUpdate", (room) => {
 
     // Enable/Disable dice roll controls for this client
     const isMyTurn = room.gameState.activePlayerIdx === myPlayerIndex;
-    if (!isMyTurn) {
+    if (!isMyTurn && !isMoving && !pendingMoveData) {
       isMoving = false;
     }
     
-    if (isMyTurn && !isMoving) {
-      if (activeP.hasWarpPending) {
-        rollBtn.classList.add("hidden");
-        warpActionBtn.classList.remove("hidden");
+    if (!isMoving && !pendingMoveData) {
+      if (isMyTurn) {
+        if (activeP.hasWarpPending) {
+          rollBtn.classList.add("hidden");
+          warpActionBtn.classList.remove("hidden");
+        } else {
+          rollBtn.classList.remove("hidden");
+          warpActionBtn.classList.add("hidden");
+          rollBtn.disabled = false;
+          rollBtn.innerHTML = `<span class="btn-shine"></span><span class="btn-text">주사위 굴리기</span>`;
+          rollResultTextEl.innerText = "당신의 차례입니다! 주사위를 던지세요.";
+        }
       } else {
         rollBtn.classList.remove("hidden");
         warpActionBtn.classList.add("hidden");
-        rollBtn.disabled = false;
-        rollResultTextEl.innerText = "당신의 차례입니다! 주사위를 던지세요.";
+        rollBtn.disabled = true;
+        rollBtn.innerHTML = `<span class="btn-shine"></span><span class="btn-text">주사위 굴리기</span>`;
+        rollResultTextEl.innerText = `${activeP.name} 님의 차례입니다.`;
       }
-    } else {
-      rollBtn.classList.remove("hidden");
-      warpActionBtn.classList.add("hidden");
-      rollBtn.disabled = true;
-      rollResultTextEl.innerText = `${activeP.name} 님의 차례입니다.`;
     }
   }
 
@@ -417,7 +424,17 @@ function playersSyncDashboard(room) {
       panel.classList.remove("hidden");
       
       const p = room.players[i];
-      document.getElementById(`p${i}-name`).innerText = p.name;
+      let nameHTML = p.name;
+      if (i === myPlayerIndex) {
+        nameHTML += ` <span class="me-badge">나</span>`;
+      }
+      if (p.isOffline) {
+        nameHTML += ` <span class="offline-badge">오프라인</span>`;
+        panel.style.opacity = "0.55";
+      } else {
+        panel.style.opacity = "1.0";
+      }
+      document.getElementById(`p${i}-name`).innerHTML = nameHTML;
       
       // Calculate gold change and trigger animation
       const oldGold = previousPlayerGold[i] !== undefined ? previousPlayerGold[i] : p.gold;
@@ -518,24 +535,100 @@ function getRoundMultiplier(turnCount) {
   return 2.0 + (turnCount - 14) * 0.45;
 }
 
+// Helper: Map tile positions (0-31) to 9x9 CSS Grid Row and Column
+function getTileGridCoords(index) {
+  let row = 9;
+  let col = 9;
+  if (index >= 0 && index <= 8) {
+    row = 9;
+    col = 9 - index;
+  } else if (index >= 8 && index <= 16) {
+    row = 9 - (index - 8);
+    col = 1;
+  } else if (index >= 16 && index <= 24) {
+    row = 1;
+    col = 1 + (index - 16);
+  } else if (index >= 24 && index <= 31) {
+    row = 1 + (index - 24);
+    col = 9;
+  }
+  return { row, col };
+}
+
 // Helper: Calculate center coordinates of a tile relative to game-board container with player offset
 function getTileCenterCoordinates(position, playerIndex) {
   const boardEl = document.getElementById("game-board");
-  const tileEl = document.querySelector(`.tile[data-index="${position}"]`);
-  if (!boardEl || !tileEl) return { x: 0, y: 0 };
+  if (!boardEl) return { x: 0, y: 0 };
 
-  const boardRect = boardEl.getBoundingClientRect();
-  const tileRect = tileEl.getBoundingClientRect();
+  const w = boardEl.offsetWidth || 760;
+  const h = boardEl.offsetHeight || 760;
 
-  // Center of the tile relative to the board
-  let x = tileRect.left - boardRect.left + tileRect.width / 2;
-  let y = tileRect.top - boardRect.top + tileRect.height / 2;
+  const coords = getTileGridCoords(position);
+  let x = ((coords.col - 0.5) / 9) * w;
+  let y = ((coords.row - 0.5) / 9) * h;
 
   // Add offset to avoid direct overlapping of multiple players on same tile
   const offsetX = (playerIndex % 2 === 0 ? -9 : 9);
   const offsetY = (playerIndex < 2 ? -9 : 9) + 4;
 
   return { x: x + offsetX, y: y + offsetY };
+}
+
+// Camera control: Zoom and pan to focus on the active player
+function updateCamera(room, positionOverride) {
+  const boardEl = document.getElementById("game-board");
+  if (!boardEl) {
+    console.warn("[Camera] game-board element not found!");
+    return;
+  }
+
+  console.log("[Camera] updateCamera called. warp:", isCameraZoomedOutForWarp, "room:", !!room);
+
+  if (isCameraZoomedOutForWarp || !room || room.gameState.status !== "playing" || !isCameraZoomedIn) {
+    console.log("[Camera] Zooming out to default (1.0x). reason: warp=" + isCameraZoomedOutForWarp + ", status=" + (room ? room.gameState.status : "N/A") + ", zoomedIn=" + isCameraZoomedIn);
+    boardEl.style.transform = "scale(1) translate(0%, 0%)";
+    return;
+  }
+
+  const activeIdx = room.gameState.activePlayerIdx;
+  if (activeIdx === undefined || activeIdx === null) {
+    console.log("[Camera] Zooming out to default (1.0x). reason: activeIdx is null");
+    boardEl.style.transform = "scale(1) translate(0%, 0%)";
+    return;
+  }
+
+  const activeP = room.players[activeIdx];
+  if (!activeP) {
+    console.log("[Camera] Zooming out to default (1.0x). reason: activeP is null");
+    boardEl.style.transform = "scale(1) translate(0%, 0%)";
+    return;
+  }
+
+  const position = positionOverride !== undefined ? positionOverride : activeP.position;
+
+  // Center on active player's current visual coordinate if animating, otherwise center on tile
+  const visual = playerVisualPositions[activeIdx];
+  let fx, fy;
+  if (visual && visual.x !== null && visual.isAnimating) {
+    const w = boardEl.offsetWidth || 760;
+    const h = boardEl.offsetHeight || 760;
+    fx = visual.x / w;
+    fy = visual.y / h;
+    console.log("[Camera] Centering on animating token:", visual.x, visual.y, "fx:", fx, "fy:", fy);
+  } else {
+    const coords = getTileGridCoords(position);
+    fx = (coords.col - 0.5) / 9;
+    fy = (coords.row - 0.5) / 9;
+    console.log("[Camera] Centering on static tile index:", position, "coords:", coords, "fx:", fx, "fy:", fy);
+  }
+
+  // Camera zoom math: translate the target point to (0.5, 0.5) and scale by 1.35
+  const tx = (0.5 - fx) * 100;
+  const ty = (0.5 - fy) * 100;
+
+  const transformStr = `scale(1.35) translate(${tx.toFixed(2)}%, ${ty.toFixed(2)}%)`;
+  console.log("[Camera] Applying transform:", transformStr);
+  boardEl.style.transform = transformStr;
 }
 
 // Helper: Triggers requestAnimationFrame parabolic jump for player tokens
@@ -589,6 +682,9 @@ function triggerTokenJump(playerIndex, startPosition, endPosition) {
       tokenEl.style.left = `${endX}px`;
       tokenEl.style.top = `${endY}px`;
       tokenEl.style.transform = `translate(-50%, -100%)`;
+
+      updateCamera(currentRoom);
+      callback();
       return;
     }
 
@@ -616,6 +712,8 @@ function triggerTokenJump(playerIndex, startPosition, endPosition) {
     tokenEl.style.left = `${x}px`;
     tokenEl.style.top = `${y}px`;
     tokenEl.style.transform = `translate(-50%, -100%) translateY(${-z}px)`;
+
+    updateCamera(currentRoom);
 
     visual.animId = requestAnimationFrame(tick);
   }
@@ -662,6 +760,13 @@ function updateTokenDisplay(room) {
     tokenEl.title = p.name;
     tokenEl.style.display = "block"; // Make sure present players have visible tokens
 
+    // Toggle active-turn class for highlight glow (no scaling)
+    if (room.gameState.activePlayerIdx === idx) {
+      tokenEl.classList.add("active-turn");
+    } else {
+      tokenEl.classList.remove("active-turn");
+    }
+
     // Update nameplate text (P1: Nickname)
     let nameplateEl = tokenEl.querySelector(".token-nameplate");
     if (!nameplateEl) {
@@ -690,15 +795,111 @@ function updateTokenDisplay(room) {
       tokenEl.style.transform = `translate(-50%, -100%)`;
     }
   });
+
+  // Focus camera on the active player
+  updateCamera(room);
 }
 
-// 4. DICE ROLL TRIGGER
-rollBtn.addEventListener("click", () => {
+// 4. DICE ROLL TRIGGER WITH POWER GAUGE
+let isCharging = false;
+let chargeValue = 0;
+let chargeDirection = 1;
+let lastTime = 0;
+
+function startCharging() {
+  if (isMoving || pendingMoveData) return;
+  if (!currentRoom) return;
+  
+  const activeP = currentRoom.players[currentRoom.gameState.activePlayerIdx];
+  // Verify it is indeed this player's turn and they are not trapped (trapped has confirm alert)
+  if (currentRoom.gameState.activePlayerIdx !== myPlayerIndex) return;
+  if (activeP.isTrapped) return;
+
+  isCharging = true;
+  chargeValue = 0;
+  chargeDirection = 1;
+  lastTime = performance.now();
+
+  const gaugeContainer = document.getElementById("gauge-container");
+  if (gaugeContainer) {
+    gaugeContainer.style.opacity = "1";
+  }
+  const gaugeLabelText = document.getElementById("gauge-label-text");
+  if (gaugeLabelText) {
+    gaugeLabelText.innerText = "파워 충전 중...";
+  }
+
+  requestAnimationFrame(chargeLoop);
+}
+
+function stopChargingAndRoll() {
+  if (!isCharging) return;
+  isCharging = false;
+
+  const gaugeContainer = document.getElementById("gauge-container");
+  if (gaugeContainer) {
+    gaugeContainer.style.opacity = "0.6";
+  }
+  const gaugeLabelText = document.getElementById("gauge-label-text");
+  if (gaugeLabelText) {
+    gaugeLabelText.innerText = "주사위 파워 게이지";
+  }
+
+  // Emit rollDice with power!
+  socket.emit("rollDice", { roomCode: myRoomCode, power: chargeValue / 100 });
+}
+
+function chargeLoop(time) {
+  if (!isCharging) return;
+
+  const delta = time - lastTime;
+  lastTime = time;
+
+  const speed = 0.15; // 0.15% per millisecond
+  chargeValue += chargeDirection * speed * delta;
+
+  if (chargeValue >= 100) {
+    chargeValue = 100;
+    chargeDirection = -1;
+  } else if (chargeValue <= 0) {
+    chargeValue = 0;
+    chargeDirection = 1;
+  }
+
+  const gaugeText = document.getElementById("gauge-text");
+  const gaugeBar = document.getElementById("gauge-bar");
+  if (gaugeText) gaugeText.innerText = Math.round(chargeValue);
+  if (gaugeBar) gaugeBar.style.width = `${chargeValue}%`;
+
+  requestAnimationFrame(chargeLoop);
+}
+
+// Bind charging events
+rollBtn.addEventListener("mousedown", (e) => {
+  if (e.button !== 0) return; // Only left click
+  startCharging();
+});
+
+rollBtn.addEventListener("touchstart", (e) => {
+  startCharging();
+});
+
+window.addEventListener("mouseup", () => {
+  stopChargingAndRoll();
+});
+
+window.addEventListener("touchend", () => {
+  stopChargingAndRoll();
+});
+
+rollBtn.addEventListener("click", (e) => {
+  if (pendingMoveData) return; // Managed by dynamic move click handler
+
   if (currentRoom) {
     const activeP = currentRoom.players[currentRoom.gameState.activePlayerIdx];
     
-    // If trapped, double check escapes
-    if (activeP.isTrapped) {
+    // If trapped, double check escapes (click is handled here because confirm is synchronous)
+    if (activeP.isTrapped && currentRoom.gameState.activePlayerIdx === myPlayerIndex) {
       const payEscape = confirm(`${activeP.name}은(는) 절대 0도의 방에 갇혀 있습니다.\n100 골드를 내고 즉시 탈출하시겠습니까?\n[취소] 클릭 시 주사위 더블(동일 숫자) 탈출을 시도합니다. (남은 감옥 대기 턴: ${activeP.trappedTurns}턴)`);
       if (payEscape && activeP.gold >= 100) {
         socket.emit("payTrapEscape", { roomCode: myRoomCode });
@@ -708,7 +909,7 @@ rollBtn.addEventListener("click", () => {
       return;
     }
 
-    socket.emit("rollDice", { roomCode: myRoomCode });
+    // Normal rolls are triggered by mouseup/touchend, so we do nothing here to prevent double rolls!
   }
 });
 
@@ -722,6 +923,9 @@ socket.on("diceRolled", ({ playerIndex, rolls, total, isDouble, newPosition, pas
   isMoving = true;
   rollBtn.disabled = true;
   playSynthSound("roll");
+
+  // Save pending move data for synchronization
+  pendingMoveData = { playerIndex, rolls, total, isDouble, newPosition, passedStart, isEscapeRoll };
 
   // Spin Dice animation
   const dice1 = document.getElementById("dice-1");
@@ -739,29 +943,62 @@ socket.on("diceRolled", ({ playerIndex, rolls, total, isDouble, newPosition, pas
     const p = currentRoom.players[playerIndex];
     rollResultTextEl.innerText = `주사위 결과: ${rolls[0]} + ${rolls[1]} = ${total}`;
 
-    // Define movement logic function
-    const startMoving = () => {
-      if (isEscapeRoll) {
-        if (isDouble) {
-          animateSteps(playerIndex, total, false, () => {
-            isMoving = false;
-          });
-        } else {
-          isMoving = false;
-        }
-        return;
+    const setupMoveConfirmation = () => {
+      // Highlight target tile
+      const targetTileEl = document.querySelector(`.tile[data-index="${newPosition}"]`);
+      if (targetTileEl) {
+        targetTileEl.classList.add("landing-pending-highlight");
       }
 
-      // Animate token step-by-step
-      animateSteps(playerIndex, total, passedStart, () => {
-        isMoving = false;
-        
-        // Resolve land triggers ONLY on the active player client to prevent duplicate server emission
-        if (playerIndex === myPlayerIndex) {
-          socket.emit("clientFinishedMoving", { roomCode: myRoomCode });
+      if (playerIndex === myPlayerIndex) {
+        rollBtn.disabled = false;
+        rollBtn.innerHTML = `<span class="btn-shine"></span><span class="btn-text">이동하기</span>`;
+        rollResultTextEl.innerText = "목적지가 표시되었습니다. '이동하기' 버튼이나 대상 칸을 클릭하여 이동하세요.";
+
+        const onMoveClick = () => {
+          rollBtn.disabled = true;
+          rollBtn.innerHTML = `<span class="btn-shine"></span><span class="btn-text">주사위 굴리기</span>`;
+          rollBtn.removeEventListener("click", onMoveClick);
+          if (targetTileEl) {
+            targetTileEl.onclick = null;
+          }
+          socket.emit("confirmMove", { roomCode: myRoomCode });
+        };
+        rollBtn.addEventListener("click", onMoveClick);
+
+        if (targetTileEl) {
+          targetTileEl.onclick = () => {
+            rollBtn.disabled = true;
+            rollBtn.innerHTML = `<span class="btn-shine"></span><span class="btn-text">주사위 굴리기</span>`;
+            rollBtn.removeEventListener("click", onMoveClick);
+            targetTileEl.onclick = null;
+            socket.emit("confirmMove", { roomCode: myRoomCode });
+          };
         }
-      });
+      } else {
+        rollBtn.disabled = true;
+        rollBtn.innerHTML = `<span class="btn-shine"></span><span class="btn-text">${p.name} 이동 대기 중...</span>`;
+        rollResultTextEl.innerText = `${p.name} 님이 이동을 시작하기를 기다리고 있습니다.`;
+      }
     };
+
+    if (isEscapeRoll) {
+      if (isDouble) {
+        rollResultTextEl.innerText += " (더블! 탈출 성공)";
+        isCameraZoomedIn = true;
+        updateCamera(currentRoom);
+        animateSteps(playerIndex, total, false, () => {
+          isMoving = false;
+          isCameraZoomedIn = false;
+          updateCamera(currentRoom);
+        });
+      } else {
+        rollResultTextEl.innerText += " (탈출 실패)";
+        isMoving = false;
+      }
+      pendingMoveData = null;
+      return;
+    }
 
     if (isDouble) {
       rollResultTextEl.innerText += " (더블!)";
@@ -773,13 +1010,13 @@ socket.on("diceRolled", ({ playerIndex, rolls, total, isDouble, newPosition, pas
         playSynthSound("success");
         setTimeout(() => {
           doubleModal.classList.remove("active");
-          startMoving(); // Start moving after the double modal fades out
+          setupMoveConfirmation();
         }, 1800);
       } else {
-        startMoving();
+        setupMoveConfirmation();
       }
     } else {
-      startMoving(); // Start moving immediately
+      setupMoveConfirmation();
     }
 
   }, 600);
@@ -796,6 +1033,36 @@ function setDiceFace(cubeEl, value) {
   };
   cubeEl.style.transform = `translateZ(-20px) ${rotMap[value]}`;
 }
+
+// Movement confirmed by active player, start animation for all clients
+socket.on("moveConfirmed", () => {
+  if (!pendingMoveData) return;
+  const { playerIndex, rolls, total, isDouble, newPosition, passedStart, isEscapeRoll } = pendingMoveData;
+  pendingMoveData = null; // Reset pending move data
+
+  // Clear highlight
+  document.querySelectorAll(".tile").forEach((el) => {
+    el.classList.remove("landing-pending-highlight");
+  });
+
+  // Zoom in camera to follow
+  isCameraZoomedIn = true;
+  updateCamera(currentRoom);
+
+  // Animate step-by-step
+  animateSteps(playerIndex, total, passedStart, () => {
+    isMoving = false;
+    
+    // Zoom out camera when movement is finished
+    isCameraZoomedIn = false;
+    updateCamera(currentRoom);
+
+    // Only active player client emits landing complete to server
+    if (playerIndex === myPlayerIndex) {
+      socket.emit("clientFinishedMoving", { roomCode: myRoomCode });
+    }
+  });
+});
 
 // Step-by-step local animation (Ting-ting parabolic jump mode)
 function animateSteps(playerIndex, steps, passedStart, callback) {
@@ -849,19 +1116,8 @@ socket.on("triggerTileAction", ({ tile }) => {
       break;
 
     case "warp": {
-      // Land on 상태 변화 터널 -> Show confirmation modal
-      const warpLandModal = document.getElementById("warp-land-modal");
-      const warpConfirmBtn = document.getElementById("warp-land-confirm-btn");
-      if (warpLandModal && warpConfirmBtn) {
-        warpLandModal.classList.add("active");
-        playSynthSound("warp");
-        warpConfirmBtn.onclick = () => {
-          warpLandModal.classList.remove("active");
-          socket.emit("landWarpMachine", { roomCode: myRoomCode });
-        };
-      } else {
-        socket.emit("landWarpMachine", { roomCode: myRoomCode });
-      }
+      // Bypass warp land confirmation modal, emit immediately
+      socket.emit("landWarpMachine", { roomCode: myRoomCode });
       break;
     }
 
@@ -877,7 +1133,7 @@ socket.on("triggerTileAction", ({ tile }) => {
 
     case "music":
       if (tile.owner === null) {
-        triggerArrivalModal(tile);
+        triggerQuizModal(tile);
       } else if (tile.owner === myPlayerIndex) {
         if (tile.level < 4) {
           triggerUpgradeModal(tile);
@@ -1355,6 +1611,9 @@ warpActionBtn.addEventListener("click", () => {
 });
 
 function openWarpSelection() {
+  isCameraZoomedOutForWarp = true;
+  updateCamera(currentRoom);
+
   warpOverlay.classList.add("active");
   warpTargetSelected = null;
 
@@ -1399,6 +1658,9 @@ document.getElementById("warp-cancel-btn").addEventListener("click", () => {
 });
 
 function closeWarpOverlay() {
+  isCameraZoomedOutForWarp = false;
+  updateCamera(currentRoom);
+
   warpOverlay.classList.remove("active");
   currentRoom.gameState.boardTiles.forEach((tile) => {
     const tileEl = document.querySelector(`[data-index="${tile.index}"]`);
@@ -1434,8 +1696,8 @@ socket.on("chatReceived", (chat) => {
   chatMessagesBox.appendChild(p);
   chatMessagesBox.scrollTop = chatMessagesBox.scrollHeight;
   
-  // Also push to bottom mid console for duplicate sync tracking
-  if (chat.sender === "SYSTEM") {
+  // Also push to bottom mid console for duplicate sync tracking if it exists
+  if (chat.sender === "SYSTEM" && consoleLogsEl) {
     const consoleLog = document.createElement("p");
     consoleLog.className = "log-system";
     consoleLog.innerText = chat.message;
@@ -1637,3 +1899,11 @@ function triggerGoldChangeAnimation(playerIndex, amount) {
     }, 1000);
   }
 }
+
+// Socket disconnect auto-reload handler to handle server restarts gracefully
+socket.on("disconnect", (reason) => {
+  if (reason === "transport close" || reason === "io server disconnect") {
+    alert("서버와의 연결이 끊어졌거나 재시작되었습니다. 로비로 이동합니다.");
+    window.location.reload();
+  }
+});

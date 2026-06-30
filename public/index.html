@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Outfit:wght@400;600;800&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
   <!-- FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
   <!-- Confetti Canvas -->
@@ -102,7 +102,6 @@
               <div class="player-avatar avatar-red"><i class="fa-solid fa-atom"></i></div>
               <div class="player-meta">
                 <h2 id="p0-name">Player 1</h2>
-                <span class="turn-indicator">YOUR TURN</span>
               </div>
             </div>
             <div class="player-stats">
@@ -133,7 +132,6 @@
               <div class="player-avatar avatar-yellow"><i class="fa-solid fa-temperature-half"></i></div>
               <div class="player-meta">
                 <h2 id="p2-name">Player 3</h2>
-                <span class="turn-indicator">YOUR TURN</span>
               </div>
             </div>
             <div class="player-stats">
@@ -197,12 +195,15 @@
                 <span class="btn-shine"></span>
                 <span class="btn-text">워프할 칸 선택하기</span>
               </button>
-            </div>
-            <!-- Log 중계 Console -->
-            <div class="game-console">
-              <div class="console-header">실시간 게임 중계</div>
-              <div id="console-logs" class="console-body">
-                <p class="log-system">로딩 완료. 방에 입장해 게임을 플레이해 주세요.</p>
+              <!-- Power Gauge UI (Always Displayed at the bottom) -->
+              <div class="gauge-container-custom" id="gauge-container" style="opacity: 0.6;">
+                <div class="gauge-label">
+                  <span id="gauge-label-text">주사위 파워 게이지</span>
+                  <span><strong id="gauge-text">50</strong>%</span>
+                </div>
+                <div class="gauge-track">
+                  <div class="gauge-fill" id="gauge-bar" style="width: 50%;"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -257,9 +258,14 @@
             <div class="players-container" id="tile-players-5"></div>
             <div class="owner-flag"></div>
           </div>
-          <div class="tile chance-tile" data-index="6" style="grid-row: 9; grid-column: 3;">
-            <div class="tile-content"><div class="tile-icon"><i class="fa-solid fa-atom"></i></div><div class="tile-name">찬스</div></div>
+          <div class="tile music-tile baroque-tile" data-index="6" style="grid-row: 9; grid-column: 3;">
+            <div class="era-tag">입자 운동</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">향수가 퍼지는 방</div>
+            <div class="tile-composer">확산</div>
+            <div class="tile-price">170G</div>
             <div class="players-container" id="tile-players-6"></div>
+            <div class="owner-flag"></div>
           </div>
           <div class="tile music-tile baroque-tile" data-index="7" style="grid-row: 9; grid-column: 2;">
             <div class="era-tag">입자 운동</div>
@@ -322,9 +328,14 @@
             <div class="players-container" id="tile-players-13"></div>
             <div class="owner-flag"></div>
           </div>
-          <div class="tile chance-tile" data-index="14" style="grid-row: 3; grid-column: 1;">
-            <div class="tile-content"><div class="tile-icon"><i class="fa-solid fa-atom"></i></div><div class="tile-name">찬스</div></div>
+          <div class="tile music-tile classical-tile" data-index="14" style="grid-row: 3; grid-column: 1;">
+            <div class="era-tag">열 흡수</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">땀이 마르는 언덕</div>
+            <div class="tile-composer">기화열 흡수</div>
+            <div class="tile-price">270G</div>
             <div class="players-container" id="tile-players-14"></div>
+            <div class="owner-flag"></div>
           </div>
           <div class="tile music-tile classical-tile" data-index="15" style="grid-row: 2; grid-column: 1;">
             <div class="era-tag">열 흡수</div>
@@ -387,9 +398,14 @@
             <div class="players-container" id="tile-players-21"></div>
             <div class="owner-flag"></div>
           </div>
-          <div class="tile chance-tile" data-index="22" style="grid-row: 1; grid-column: 7;">
-            <div class="tile-content"><div class="tile-icon"><i class="fa-solid fa-atom"></i></div><div class="tile-name">찬스</div></div>
+          <div class="tile music-tile romantic-tile" data-index="22" style="grid-row: 1; grid-column: 7;">
+            <div class="era-tag">열 방출</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">눈 내리는 하늘</div>
+            <div class="tile-composer">승화열 방출</div>
+            <div class="tile-price">350G</div>
             <div class="players-container" id="tile-players-22"></div>
+            <div class="owner-flag"></div>
           </div>
           <div class="tile music-tile romantic-tile" data-index="23" style="grid-row: 1; grid-column: 8;">
             <div class="era-tag">열 방출</div>
@@ -452,9 +468,14 @@
             <div class="players-container" id="tile-players-29"></div>
             <div class="owner-flag"></div>
           </div>
-          <div class="tile chance-tile" data-index="30" style="grid-row: 7; grid-column: 9;">
-            <div class="tile-content"><div class="tile-icon"><i class="fa-solid fa-atom"></i></div><div class="tile-name">찬스</div></div>
+          <div class="tile music-tile modern-tile" data-index="30" style="grid-row: 7; grid-column: 9;">
+            <div class="era-tag">생활 활용</div>
+            <div class="landmark-slots"><span class="slot" data-lv="1">🪵</span><span class="slot" data-lv="2">🧪</span><span class="slot" data-lv="3">🏫</span><span class="slot" data-lv="4">📡</span></div>
+            <div class="tile-name">스팀 난방기</div>
+            <div class="tile-composer">액화열 방출</div>
+            <div class="tile-price">470G</div>
             <div class="players-container" id="tile-players-30"></div>
+            <div class="owner-flag"></div>
           </div>
           <div class="tile music-tile modern-tile" data-index="31" style="grid-row: 8; grid-column: 9;">
             <div class="era-tag">생활 활용</div>
@@ -478,7 +499,6 @@
               <div class="player-avatar avatar-cyan"><i class="fa-solid fa-flask"></i></div>
               <div class="player-meta">
                 <h2 id="p1-name">Player 2</h2>
-                <span class="turn-indicator">YOUR TURN</span>
               </div>
             </div>
             <div class="player-stats">
@@ -509,7 +529,6 @@
               <div class="player-avatar avatar-purple"><i class="fa-solid fa-dna"></i></div>
               <div class="player-meta">
                 <h2 id="p3-name">Player 4</h2>
-                <span class="turn-indicator">YOUR TURN</span>
               </div>
             </div>
             <div class="player-stats">
@@ -829,6 +848,6 @@
 
   <!-- Load socket.io client and our client module -->
   <script src="/socket.io/socket.io.js"></script>
-  <script type="module" src="client.js"></script>
+  <script type="module" src="client.js?v=15"></script>
 </body>
 </html>

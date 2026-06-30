@@ -36,7 +36,8 @@ const boardTemplate = [
     trivia: { question: "Q. 모양과 부피가 모두 일정하지 않아 용기 전체로 쉽게 퍼져 나가며, 입자 사이의 거리가 매우 멀고 매우 활발하게 움직이는 물질의 상태는 무엇인가?", options: ["기체 상태", "고체 상태", "액체 상태", "응고 상태"], answer: "기체 상태" } },
   { index: 5, name: "끊임없는 춤교실", composer: "입자", type: "music", era: "baroque", price: 160, upgradePrice: 80, baseToll: 25, tolls: [0,25,50,100,175], owner: null, level: 0,
     trivia: { question: "Q. 물질을 구성하는 입자들이 스스로 끊임없이 움직이는 현상을 무엇이라고 하는가?", options: ["입자 운동", "중력 운동", "정지 상태", "마찰 운동"], answer: "입자 운동" } },
-  { index: 6, name: "돌발 과학 찬스", composer: "CHANCE", type: "chance", era: null, price: 0, baseToll: 0, tolls: [0,0,0,0,0] },
+  { index: 6, name: "향수가 퍼지는 방", composer: "확산", type: "music", era: "baroque", price: 170, upgradePrice: 85, baseToll: 28, tolls: [0,28,56,112,196], owner: null, level: 0,
+    trivia: { question: "Q. 물질을 구성하는 입자가 스스로 운동하여 액체나 기체 속으로 퍼져 나가는 현상을 무엇이라고 하는가? (예: 방 한구석에 뿌린 향수 냄새가 방 전체로 퍼진다.)", options: ["확산", "증발", "끓음", "응축"], answer: "확산" } },
   { index: 7, name: "입자 간격 비교실", composer: "입자 거리", type: "music", era: "baroque", price: 180, upgradePrice: 90, baseToll: 30, tolls: [0,30,60,120,210], owner: null, level: 0,
     trivia: { question: "Q. 고체, 액체, 기체 상태 중 물질을 구성하는 입자 사이의 거리가 가장 먼 상태는 무엇인가?", options: ["기체 상태", "고체 상태", "액체 상태", "융해 상태"], answer: "기체 상태" } },
   
@@ -50,7 +51,8 @@ const boardTemplate = [
     trivia: { question: "Q. 고체가 액체로 녹을 때 주변으로부터 열에너지를 흡수하는 현상을 무엇이라고 하는가? 이로 인해 주변 온도가 낮아진다.", options: ["융해열 흡수", "응고열 방출", "액화열 방출", "기화열 방출"], answer: "융해열 흡수" } },
   { index: 13, name: "여름날의 분수대", composer: "기화열", type: "music", era: "classical", price: 260, upgradePrice: 130, baseToll: 50, tolls: [0,50,100,200,350], owner: null, level: 0,
     trivia: { question: "Q. 액체가 기체로 기화할 때 주변으로부터 열에너지를 흡수하는 현상을 무엇이라고 하는가? 더운 여름철 마당에 물을 뿌리면 시원해지는 원리이다.", options: ["기화열 흡수", "액화열 방출", "응고열 방출", "융해열 흡수"], answer: "기화열 흡수" } },
-  { index: 14, name: "돌발 과학 찬스", composer: "CHANCE", type: "chance", era: null, price: 0, baseToll: 0, tolls: [0,0,0,0,0] },
+  { index: 14, name: "땀이 마르는 언덕", composer: "기화열 흡수", type: "music", era: "classical", price: 270, upgradePrice: 135, baseToll: 52, tolls: [0,52,104,208,364], owner: null, level: 0,
+    trivia: { question: "Q. 더운 날 몸에 묻은 땀이 마르면서 몸이 시원해지는 현상은 어떤 상태 변화열 흡수를 이용한 것인가?", options: ["기화열 흡수", "융해열 흡수", "승화열 흡수", "응고열 방출"], answer: "기화열 흡수" } },
   { index: 15, name: "드라이아이스 실험실", composer: "승화(흡열)", type: "music", era: "classical", price: 280, upgradePrice: 140, baseToll: 55, tolls: [0,55,110,220,385], owner: null, level: 0,
     trivia: { question: "Q. 고체 상태의 물질이 액체 상태를 거치지 않고 직접 기체 상태로 변하는 현상을 무엇이라고 하는가? (예: 드라이아이스 크기가 점점 줄어든다.)", options: ["승화", "응고", "액화", "융해"], answer: "승화" } },
   
@@ -64,7 +66,8 @@ const boardTemplate = [
     trivia: { question: "Q. 액체가 고체로 얼 때 주변으로 열에너지를 방출하는 현상을 무엇이라고 하는가? 추운 겨울 에스키모가 이글루 내부에 물을 뿌려 내부를 따뜻하게 하는 데 활용된다.", options: ["응고열 방출", "융해열 흡수", "기화열 흡수", "액화열 방출"], answer: "응고열 방출" } },
   { index: 21, name: "김 서린 대중탕", composer: "액화열", type: "music", era: "romantic", price: 340, upgradePrice: 170, baseToll: 70, tolls: [0,70,140,280,490], owner: null, level: 0,
     trivia: { question: "Q. 기체가 액체로 변할 때 주변으로 열에너지를 방출하는 현상을 무엇이라고 하는가? 목욕탕 천장에 맺힌 물방울이 떨어져 피부에 닿으면 뜨겁게 느껴지는 원리이다.", options: ["액화열 방출", "기화열 흡수", "융해열 흡수", "승화열 흡수"], answer: "액화열 방출" } },
-  { index: 22, name: "돌발 과학 찬스", composer: "CHANCE", type: "chance", era: null, price: 0, baseToll: 0, tolls: [0,0,0,0,0] },
+  { index: 22, name: "눈 내리는 하늘", composer: "승화열 방출", type: "music", era: "romantic", price: 350, upgradePrice: 175, baseToll: 72, tolls: [0,72,144,288,504], owner: null, level: 0,
+    trivia: { question: "Q. 구름 속의 수증기가 직접 얼어서 눈이 될 때 주변으로 열에너지를 방출하여 날씨가 포근해지는 현상은 어떤 상태 변화열을 이용한 것인가?", options: ["승화열 방출", "융해열 흡수", "액화열 방출", "응고열 방출"], answer: "승화열 방출" } },
   { index: 23, name: "겨울 창문 성에 방", composer: "승화(발열)", type: "music", era: "romantic", price: 360, upgradePrice: 180, baseToll: 75, tolls: [0,75,150,300,525], owner: null, level: 0,
     trivia: { question: "Q. 기체 상태의 물질이 액체 상태를 거치지 않고 직접 고체 상태로 변하는 현상을 무엇이라고 하는가? (예: 찬 바람이 부는 날 창문에 성에가 낀다.)", options: ["승화", "액화", "기화", "융해"], answer: "승화" } },
   
@@ -78,7 +81,8 @@ const boardTemplate = [
     trivia: { question: "Q. 아이스크림을 포장할 때 함께 넣는 드라이아이스는 어떤 상태 변화를 거치며 주변 온도를 낮게 유지해 주는가?", options: ["승화 (고체→기체)", "융해 (고체→액체)", "기화 (액체→기체)", "액화 (기체→액체)"], answer: "승화 (고체→기체)" } },
   { index: 29, name: "안개와 김", composer: "수증기 액화", type: "music", era: "modern", price: 460, upgradePrice: 230, baseToll: 110, tolls: [0,110,220,440,770], owner: null, level: 0,
     trivia: { question: "Q. 끓는 주전자 주둥이 앞에 하얗게 보이는 '김'이나 이른 아침 강가에 끼는 '안개'는 수증기가 어떤 상태 변화를 거쳐 생긴 미세한 물방울인가?", options: ["액화", "기화", "융해", "승화"], answer: "액화" } },
-  { index: 30, name: "돌발 과학 찬스", composer: "CHANCE", type: "chance", era: null, price: 0, baseToll: 0, tolls: [0,0,0,0,0] },
+  { index: 30, name: "스팀 난방기", composer: "액화열 방출", type: "music", era: "modern", price: 470, upgradePrice: 235, baseToll: 115, tolls: [0,115,230,460,805], owner: null, level: 0,
+    trivia: { question: "Q. 겨울철 건물 내부의 스팀 난방기는 파이프 안의 뜨거운 수증기가 물로 변할 때 방출하는 어떤 에너지를 이용해 방 안을 따뜻하게 하는가?", options: ["액화열 방출", "기화열 흡수", "융해열 흡수", "응고열 방출"], answer: "액화열 방출" } },
   { index: 31, name: "눈 올 때 따뜻함", composer: "상태변화와 열", type: "music", era: "modern", price: 480, upgradePrice: 240, baseToll: 120, tolls: [0,120,240,480,840], owner: null, level: 0,
     trivia: { question: "Q. 겨울철 함박눈이 내릴 때 날씨가 포근하게 느껴지는 주된 이유는 구름 속의 물방울이 얼거나(응고) 수증기가 눈(승화)으로 변하면서 어떤 현상이 발생하기 때문인가?", options: ["열에너지 방출", "열에너지 흡수", "기화열 흡수", "융해열 흡수"], answer: "열에너지 방출" } }
 ];
@@ -190,6 +194,31 @@ io.on("connection", (socket) => {
     }
 
     const room = rooms.get(code);
+    
+    // Check if player with the same name already exists in this room
+    const existingPlayerIndex = room.players.findIndex(p => p.name === playerName);
+
+    if (existingPlayerIndex !== -1) {
+      if (room.gameState.status === "playing") {
+        // Rejoin existing active slot!
+        const existingPlayer = room.players[existingPlayerIndex];
+        existingPlayer.socketId = socket.id;
+        existingPlayer.isOffline = false;
+
+        socket.join(code);
+        socket.emit("joinSuccess", { roomCode: code, playerIndex: existingPlayerIndex });
+        
+        sendSystemChatMessage(code, `🔄 ${playerName} 님이 재접속하셨습니다.`);
+        io.to(code).emit("roomStateUpdate", room);
+        console.log(`User ${playerName} rejoined Room ${code}`);
+        return;
+      } else {
+        socket.emit("joinError", "이미 동일한 이름의 플레이어가 대기실에 있습니다.");
+        return;
+      }
+    }
+
+    // New player join checks
     if (room.gameState.status !== "waiting") {
       socket.emit("joinError", "이미 게임이 시작되었습니다.");
       return;
@@ -217,7 +246,8 @@ io.on("connection", (socket) => {
       trappedTurns: 0,
       hasWarpPending: false,
       properties: [],
-      isHost: false
+      isHost: false,
+      isOffline: false
     };
 
     room.players.push(newPlayer);
@@ -267,17 +297,41 @@ io.on("connection", (socket) => {
     io.to(roomCode).emit("chatReceived", chat);
   });
 
+  // Helper: Roll a single weighted die based on power gauge value
+  function rollWeightedDie(power) {
+    const t = (power !== undefined && power !== null) ? power : 0.5;
+    
+    // W(x, t) = (1 - t) * (7 - x) + t * x
+    const weights = [];
+    let totalWeight = 0;
+    for (let x = 1; x <= 6; x++) {
+      const w = (1 - t) * (7 - x) + t * x;
+      weights.push(w);
+      totalWeight += w;
+    }
+
+    const r = Math.random() * totalWeight;
+    let runningSum = 0;
+    for (let i = 0; i < 6; i++) {
+      runningSum += weights[i];
+      if (r <= runningSum) {
+        return i + 1;
+      }
+    }
+    return 6;
+  }
+
   // Dice Roll Handler
-  socket.on("rollDice", ({ roomCode }) => {
+  socket.on("rollDice", ({ roomCode, power }) => {
     const room = rooms.get(roomCode);
     if (!room) return;
 
     const activeP = room.players[room.gameState.activePlayerIdx];
     if (activeP.socketId !== socket.id) return; // Not their turn
 
-    // Calculate Roll
-    const val1 = Math.floor(Math.random() * 6) + 1;
-    const val2 = Math.floor(Math.random() * 6) + 1;
+    // Calculate Roll using weighted probability
+    const val1 = rollWeightedDie(power);
+    const val2 = rollWeightedDie(power);
     const total = val1 + val2;
 
     const isDouble = val1 === val2;
@@ -381,6 +435,15 @@ io.on("connection", (socket) => {
         endTurn(roomCode);
       }, 2000);
     }
+  });
+
+  // Player confirms moving (Click -> Move)
+  socket.on("confirmMove", ({ roomCode }) => {
+    const room = rooms.get(roomCode);
+    if (!room) return;
+    const activeP = room.players[room.gameState.activePlayerIdx];
+    if (activeP.socketId !== socket.id) return;
+    io.to(roomCode).emit("moveConfirmed");
   });
 
   // Land complete, resolve tile actions
@@ -984,31 +1047,35 @@ io.on("connection", (socket) => {
         const pName = room.players[pIdx].name;
         const isHost = room.players[pIdx].isHost;
 
-        // Remove player
-        room.players.splice(pIdx, 1);
-        sendSystemChatMessage(code, `${pName} 님이 퇴장하셨습니다.`);
-
-        if (room.players.length === 0) {
-          // Delete room if empty
-          rooms.delete(code);
-          console.log(`Room ${code} deleted.`);
-        } else {
-          // Migrate host if host left
-          if (isHost) {
-            room.players[0].isHost = true;
-            sendSystemChatMessage(code, `${room.players[0].name} 님이 방장이 되었습니다.`);
-          }
+        if (room.gameState.status === "playing") {
+          // If game is in progress, mark player as offline, do NOT splice them out
+          room.players[pIdx].isOffline = true;
+          sendSystemChatMessage(code, `⚠️ ${pName} 님이 접속이 끊겼습니다. 재접속을 대기합니다.`);
           
-          // Re-index properties owners if game in progress to avoid socket id sync bugs
-          // (Our properties list owners are indexes 0-3. If we splice room.players, indices shift.
-          // To keep it simple, we check if playing and announce game end if someone leaves mid-game).
-          if (room.gameState.status === "playing") {
-            room.gameState.status = "finished";
-            sendSystemChatMessage(code, `⚠️ 플레이어가 이탈하여 게임이 조기 종료되었습니다.`);
-            io.to(code).emit("gameAborted", `${pName} 님의 탈퇴로 인한 조기 종료.`);
+          // Check if all players in the room are offline. If so, destroy the room.
+          const allOffline = room.players.every(p => p.isOffline);
+          if (allOffline) {
+            rooms.delete(code);
+            console.log(`Room ${code} deleted because all players disconnected.`);
+          } else {
+            io.to(code).emit("roomStateUpdate", room);
           }
+        } else {
+          // If game hasn't started yet, remove player completely (normal lobby behavior)
+          room.players.splice(pIdx, 1);
+          sendSystemChatMessage(code, `${pName} 님이 퇴장하셨습니다.`);
 
-          io.to(code).emit("roomStateUpdate", room);
+          if (room.players.length === 0) {
+            rooms.delete(code);
+            console.log(`Room ${code} deleted.`);
+          } else {
+            // Migrate host if host left
+            if (isHost) {
+              room.players[0].isHost = true;
+              sendSystemChatMessage(code, `${room.players[0].name} 님이 방장이 되었습니다.`);
+            }
+            io.to(code).emit("roomStateUpdate", room);
+          }
         }
         break;
       }
