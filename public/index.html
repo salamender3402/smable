@@ -656,6 +656,10 @@
         </p>
         <div class="toll-amount-box">납부할 통행료: <strong id="toll-fee" class="text-red">0 G</strong></div>
         <div class="my-gold-box">나의 보유 골드: <strong id="toll-my-gold" class="text-gold">0 G</strong></div>
+        
+        <div id="toll-warning-box" class="warning-alert hidden">
+          ⚠️ 보유 골드가 통행료보다 부족합니다. 납부 시 가치가 낮은 부동산부터 순차적으로 강제 매각됩니다.
+        </div>
 
         <!-- Takeover Area -->
         <div id="takeover-info-box" class="takeover-section">
@@ -666,6 +670,10 @@
           </div>
           <p class="takeover-desc">이 기지를 인수하여 내 연구 기지로 만듭니다. (인수 시 통행료도 함께 지불됩니다.)</p>
           <div class="takeover-cost-box">인수 비용: <strong id="takeover-cost" class="text-gold">0 G</strong></div>
+          <div class="takeover-cost-box" style="background: rgba(255, 68, 68, 0.06); border-color: rgba(255, 68, 68, 0.25); margin-top: -6px;">
+            <span>인수 시 총 필요 골드 (통행료+인수비):</span>
+            <strong id="takeover-total-cost" class="text-red">0 G</strong>
+          </div>
         </div>
       </div>
       <div class="modal-actions">

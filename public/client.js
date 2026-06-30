@@ -1115,6 +1115,13 @@ function animateSteps(playerIndex, steps, passedStart, callback) {
     if (direction === 1 && p.position === 0 && passedStart) {
       setTimeout(() => {
         playSynthSound("success");
+        
+        // Immediately add 200 gold to local state of the player passing START
+        const localPlayerObj = currentRoom.players[playerIndex];
+        localPlayerObj.gold += 200;
+        
+        // Update dashboard scorecards to reflect new gold
+        playersSyncDashboard(currentRoom);
       }, 250); // Play success chime when landing on start
     }
 
@@ -1193,12 +1200,30 @@ socket.on("triggerTileAction", ({ tile }) => {
         // Apply round multiplier to takeover cost
         const takeoverCost = Math.floor(originalValue * multiplier * roundMult);
         document.getElementById("takeover-cost").innerText = `${takeoverCost} Gold`;
+        
+        // Calculate and render total takeover cost (toll + takeover)
+        const totalTakeoverCost = tollFee + takeoverCost;
+        const totalCostEl = document.getElementById("takeover-total-cost");
+        if (totalCostEl) {
+          totalCostEl.innerText = `${totalTakeoverCost} Gold`;
+        }
 
         const me = currentRoom.players[myPlayerIndex];
         document.getElementById("toll-my-gold").innerText = `${me.gold} Gold`;
         const takeoverInfoBox = document.getElementById("takeover-info-box");
         const payOnlyBtn = document.getElementById("toll-pay-only-btn");
         const takeoverBtn = document.getElementById("toll-takeover-btn");
+
+        // Show warning if player gold is less than toll fee
+        const isTollShort = me.gold < tollFee;
+        const warningBox = document.getElementById("toll-warning-box");
+        if (warningBox) {
+          if (isTollShort) {
+            warningBox.classList.remove("hidden");
+          } else {
+            warningBox.classList.add("hidden");
+          }
+        }
 
         // Can takeover check: level < 4 and enough gold for BOTH toll and takeover
         const isLandmark = tile.level >= 4;

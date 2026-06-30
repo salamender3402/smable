@@ -1166,7 +1166,17 @@ function checkPlayerBankruptcy(roomCode, playerIndex) {
     // Liquidate properties
     if (p.properties.length > 0) {
       sendSystemChatMessage(roomCode, `⚠️ ${p.name} 님이 파산 위기로 개념 기지를 반값 매각합니다.`);
-      p.properties.sort((a, b) => room.gameState.boardTiles[a].price - room.gameState.boardTiles[b].price);
+      
+      // Helper to calculate total value of a property (price + upgrades)
+      const getTileValue = (idx) => {
+        const tile = room.gameState.boardTiles[idx];
+        if (!tile) return 0;
+        return tile.price + (tile.level - 1) * tile.upgradePrice;
+      };
+      
+      // Sort in descending order (highest value first, lowest value last)
+      // So that pop() retrieves and sells the lowest value property first!
+      p.properties.sort((a, b) => getTileValue(b) - getTileValue(a));
       
       while (p.gold <= 0 && p.properties.length > 0) {
         const tileIdx = p.properties.pop();
