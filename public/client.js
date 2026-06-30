@@ -311,6 +311,7 @@ startGameBtn.addEventListener("click", () => {
 socket.on("joinSuccess", ({ roomCode, playerIndex }) => {
   myRoomCode = roomCode;
   myPlayerIndex = playerIndex;
+  isRollPending = false; // Reset lock on join
   
   displayRoomCode.innerText = roomCode;
   headerRoomCode.innerText = roomCode;
@@ -805,9 +806,11 @@ let isCharging = false;
 let chargeValue = 0;
 let chargeDirection = 1;
 let lastTime = 0;
+let isRollPending = false; // Prevent double rolls
+let isTouchDevice = false; // Bypass mouse events emulation on touch devices
 
 function startCharging() {
-  if (isMoving || pendingMoveData) return;
+  if (isMoving || pendingMoveData || isRollPending) return;
   if (!currentRoom) return;
   
   const activeP = currentRoom.players[currentRoom.gameState.activePlayerIdx];
@@ -835,6 +838,8 @@ function startCharging() {
 function stopChargingAndRoll() {
   if (!isCharging) return;
   isCharging = false;
+
+  isRollPending = true; // Lock roll request
 
   const gaugeContainer = document.getElementById("gauge-container");
   if (gaugeContainer) {
@@ -876,19 +881,27 @@ function chargeLoop(time) {
 
 // Bind charging events
 rollBtn.addEventListener("mousedown", (e) => {
+  if (isTouchDevice) return; // Skip mouse events on touch devices
   if (e.button !== 0) return; // Only left click
   startCharging();
 });
 
 rollBtn.addEventListener("touchstart", (e) => {
+  isTouchDevice = true; // Mark as touch device to block emulator events
   startCharging();
 });
 
 window.addEventListener("mouseup", () => {
+  if (isTouchDevice) {
+    // Reset touch flag after a short timeout for hybrid screen users
+    setTimeout(() => { isTouchDevice = false; }, 500);
+    return;
+  }
   stopChargingAndRoll();
 });
 
 window.addEventListener("touchend", () => {
+  isTouchDevice = true;
   stopChargingAndRoll();
 });
 
@@ -900,7 +913,9 @@ rollBtn.addEventListener("click", (e) => {
     
     // If trapped, double check escapes (click is handled here because confirm is synchronous)
     if (activeP.isTrapped && currentRoom.gameState.activePlayerIdx === myPlayerIndex) {
+      if (isRollPending) return; // Prevent double escape trigger
       const payEscape = confirm(`${activeP.name}은(는) 절대 0도의 방에 갇혀 있습니다.\n100 골드를 내고 즉시 탈출하시겠습니까?\n[취소] 클릭 시 주사위 더블(동일 숫자) 탈출을 시도합니다. (남은 감옥 대기 턴: ${activeP.trappedTurns}턴)`);
+      isRollPending = true; // Lock roll request
       if (payEscape && activeP.gold >= 100) {
         socket.emit("payTrapEscape", { roomCode: myRoomCode });
       } else {
@@ -915,11 +930,13 @@ rollBtn.addEventListener("click", (e) => {
 
 // Escape success callback, roll next immediately
 socket.on("trapEscapeSuccess", () => {
+  isRollPending = true;
   socket.emit("rollDice", { roomCode: myRoomCode });
 });
 
 // Sync Dice roll visual
 socket.on("diceRolled", ({ playerIndex, rolls, total, isDouble, newPosition, passedStart, isEscapeRoll }) => {
+  isRollPending = false; // Reset lock on response
   isMoving = true;
   rollBtn.disabled = true;
   playSynthSound("roll");

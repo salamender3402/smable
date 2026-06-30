@@ -1181,7 +1181,7 @@ body {
 /* WARP HIGHLIGHT */
 .warp-overlay-screen {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.15);
+  background: rgba(0,0,0,0.12);
   z-index: 5500; opacity: 0; pointer-events: none;
   visibility: hidden;
   transition: opacity 0.3s ease, visibility 0.3s ease;
@@ -1189,14 +1189,15 @@ body {
 
 .warp-overlay-screen.active { 
   opacity: 1; 
-  pointer-events: auto; /* Block click events to non-target background tiles */
+  pointer-events: none; /* Allow clicks to pass through to the board tiles below! */
   visibility: visible;
 }
 
 .warp-guide-box {
-  background: rgba(18, 22, 33, 0.95);
-  border: 2px solid rgba(0, 229, 255, 0.5);
-  box-shadow: 0 10px 30px rgba(0, 229, 255, 0.3);
+  background: rgba(255, 255, 255, 0.85); /* Bright frosted glass theme */
+  backdrop-filter: blur(20px);
+  border: 2px solid rgba(0, 229, 255, 0.35); /* Glowing cyan glass border */
+  box-shadow: 0 10px 30px rgba(0, 229, 255, 0.1);
   border-radius: 12px;
   padding: 16px;
   width: 280px;
@@ -1205,6 +1206,19 @@ body {
   bottom: 30px;
   left: 30px;
   z-index: 6100; /* Above target tiles */
+  pointer-events: auto !important; /* Capture click events for confirm/cancel buttons */
+}
+
+/* Custom styling for preview target info */
+.warp-target-info {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-modern); /* Deep green / scientific blue */
+  background: rgba(0, 229, 255, 0.05);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 6px;
+  padding: 8px;
+  margin: 12px 0;
 }
 
 @media (max-width: 1360px) {
