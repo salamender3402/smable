@@ -412,17 +412,17 @@ body {
   margin-left: 4px;
 }
 
-/* 3-COLUMN LAYOUT */
+/* 2-COLUMN LAYOUT */
 .game-container {
   flex: 1;
   display: grid;
-  grid-template-columns: 240px 1fr 280px; /* Reduced sidebars to give board maximum width */
-  gap: 15px;
+  grid-template-columns: 1fr 320px; /* Board on left, Scorecards/Chat on right */
+  gap: 20px;
   padding: 15px;
-  max-width: 1440px;
+  max-width: 1200px;
   width: 100%;
   margin: 0 auto;
-  align-items: stretch;
+  align-items: start;
 }
 
 .dashboard-column {
@@ -502,6 +502,7 @@ body {
   width: 100%;
   max-width: 760px;
   aspect-ratio: 1;
+  margin: 0 auto; /* Center board inside left column */
 }
 
 .board {
@@ -1297,14 +1298,26 @@ body {
 .score-card.card-p3 { border-left: 3px solid var(--p3-color); }
 
 /* RESPONSIVENESS */
-@media (max-width: 1360px) {
+@media (max-width: 1100px) {
   .game-container {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto;
     padding: 10px;
   }
-  .board-section { order: -1; margin: 10px 0; }
-  .chat-container { height: 300px; }
+  .board-section {
+    order: -1;
+    margin: 10px auto;
+  }
+  .right-column {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+    width: 100%;
+  }
+  .chat-container {
+    grid-column: 1 / -1;
+    height: 250px;
+  }
 }
 
 @media (max-width: 800px) {
@@ -1318,6 +1331,12 @@ body {
   .tile-composer, .tile-price, .era-tag { font-size: 5.5px; }
   .landmark-slots { font-size: 6px; }
   .token { width: 9px; height: 9px; }
+}
+
+@media (max-width: 600px) {
+  .right-column {
+    grid-template-columns: 1fr; /* Stack vertically on small mobile */
+  }
 }
 
 @media (max-width: 480px) {
@@ -1577,4 +1596,18 @@ body {
   line-height: 1.4;
   word-break: keep-all;
   box-sizing: border-box;
+}
+
+/* Bankrupt player badge style */
+.bankrupt-badge {
+  background: #ef4444; /* Alert red */
+  color: #fff !important;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  display: inline-block;
+  vertical-align: middle;
+  text-shadow: none;
 }

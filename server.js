@@ -165,7 +165,8 @@ io.on("connection", (socket) => {
           trappedTurns: 0,
           hasWarpPending: false,
           properties: [],
-          isHost: true
+          isHost: true,
+          isBankrupt: false
         }
       ],
       gameState: {
@@ -247,7 +248,8 @@ io.on("connection", (socket) => {
       hasWarpPending: false,
       properties: [],
       isHost: false,
-      isOffline: false
+      isOffline: false,
+      isBankrupt: false
     };
 
     room.players.push(newPlayer);
@@ -767,7 +769,7 @@ io.on("connection", (socket) => {
         activeP.gold += collected;
         actionMsg = `필터 교체비 총 ${collected}골드 획득!`;
       } else if (card.id === "expo_donation") {
-        let activePlayers = room.players.filter(p => p.gold > 0);
+        let activePlayers = room.players.filter(p => !p.isBankrupt);
         if (activePlayers.length > 0) {
           activePlayers.sort((a, b) => b.gold - a.gold);
           const richest = activePlayers[0];
@@ -776,12 +778,16 @@ io.on("connection", (socket) => {
           const richestIdx = room.players.indexOf(richest);
           const poorestIdx = room.players.indexOf(poorest);
           
-          richest.gold = Math.max(0, richest.gold - 100);
-          checkPlayerBankruptcy(roomCode, richestIdx);
+          let donateAmount = 0;
+          if (richest.gold > 0) {
+            donateAmount = Math.min(richest.gold, 100);
+            richest.gold -= donateAmount;
+            checkPlayerBankruptcy(roomCode, richestIdx);
+          }
           
-          poorest.gold += 100;
+          poorest.gold += donateAmount;
           actionMsg = `기부와 지원이 완료되었습니다.`;
-          sendSystemChatMessage(roomCode, `📢 가장 부유한 ${richest.name} 님이 100골드를 후원하고, 가장 가난한 ${poorest.name} 님이 100골드 지원금을 받았습니다.`);
+          sendSystemChatMessage(roomCode, `📢 가장 부유한 ${richest.name} 님이 ${donateAmount}골드를 후원하고, 가장 가난한 ${poorest.name} 님이 ${donateAmount}골드 지원금을 받았습니다.`);
         } else {
           actionMsg = `활성화된 플레이어가 없습니다.`;
         }
@@ -811,7 +817,7 @@ io.on("connection", (socket) => {
           actionMsg = `소유한 기지가 없어 대폭락 피해를 면했습니다!`;
         }
       } else if (card.id === "gold_redistribution") {
-        let activePlayers = room.players.filter(p => p.gold > 0);
+        let activePlayers = room.players.filter(p => !p.isBankrupt);
         if (activePlayers.length > 0) {
           let totalGold = activePlayers.reduce((sum, p) => sum + p.gold, 0);
           let fairShare = Math.floor(totalGold / activePlayers.length);
@@ -1130,8 +1136,8 @@ function endTurn(roomCode) {
   do {
     nextIdx = (nextIdx + 1) % room.players.length;
     loopCount++;
-    // Skip players with 0 gold (bankrupt)
-  } while (room.players[nextIdx].gold <= 0 && loopCount < room.players.length);
+    // Skip bankrupt players
+  } while (room.players[nextIdx].isBankrupt && loopCount < room.players.length);
 
   room.gameState.activePlayerIdx = nextIdx;
 
@@ -1145,8 +1151,8 @@ function endTurn(roomCode) {
   }
 
   // Double check if only 1 player remains active (others bankrupt)
-  const activePlayers = room.players.filter(p => p.gold > 0);
-  if (activePlayers.length === 1) {
+  const activePlayers = room.players.filter(p => !p.isBankrupt);
+  if (room.players.length > 1 && activePlayers.length === 1) {
     declareWinner(roomCode, activePlayers[0]);
     return;
   }
@@ -1193,6 +1199,7 @@ function checkPlayerBankruptcy(roomCode, playerIndex) {
     }
 
     if (p.gold <= 0) {
+      p.isBankrupt = true;
       sendSystemChatMessage(roomCode, `💥 ${p.name} 님이 결국 파산(Bankrupt)하였습니다.`);
     }
   }
@@ -1201,6 +1208,9 @@ function checkPlayerBankruptcy(roomCode, playerIndex) {
 function declareWinner(roomCode, winner) {
   const room = rooms.get(roomCode);
   room.gameState.status = "finished";
+  
+  // Emit final state to sync player panels and bankruptcy statuses
+  io.to(roomCode).emit("roomStateUpdate", room);
   
   io.to(roomCode).emit("gameOver", {
     winnerName: winner.name,

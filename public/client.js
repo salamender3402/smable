@@ -429,7 +429,10 @@ function playersSyncDashboard(room) {
       if (i === myPlayerIndex) {
         nameHTML += ` <span class="me-badge">나</span>`;
       }
-      if (p.isOffline) {
+      if (p.isBankrupt) {
+        nameHTML += ` <span class="bankrupt-badge">파산</span>`;
+        panel.style.opacity = "0.4";
+      } else if (p.isOffline) {
         nameHTML += ` <span class="offline-badge">오프라인</span>`;
         panel.style.opacity = "0.55";
       } else {
